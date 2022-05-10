@@ -66,4 +66,15 @@ class RadiofanChessParser{
 
 		error_log('deactivate');//todo
 	}
+
+	public static function uninstall(){
+		if(!current_user_can('activate_plugins'))
+			return;
+		
+		if(!defined('WP_UNINSTALL_PLUGIN'))
+			return;
+
+		global $wpdb;
+		$wpdb->query('DROP TABLE '.$wpdb->prefix.'rad_chess_players_ratings, '.$wpdb->prefix.'rad_chess_players');
+	}
 }
