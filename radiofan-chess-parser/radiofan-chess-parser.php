@@ -10,5 +10,7 @@
  * Requires PHP: 7.0
 */
 
+if(!defined('ABSPATH')) die();
+
 require_once 'radiofan-chess-parser-class.php';
 $radiofan_chess_parser = new RadiofanChessParser(__FILE__);
