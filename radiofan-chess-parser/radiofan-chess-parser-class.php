@@ -75,6 +75,131 @@ class RadiofanChessParser{
 		$csv_stream = fopen($csv, 'r');
 		if($csv_stream === false)
 			return new WP_Error('csv_not_open', 'CSV файл не открыт!');
+		
+		//проверка заголовка
+		$str = (string)fgets($csv_stream);
+		$data = str_getcsv($str, ';');
+		if($data !== ['ID_No','Name','Sex','Fed','Clubnumber','ClubName','Birthday','Rtg_Nat','Fide_No','Rtg_Int']){
+			fclose($csv_stream);
+			return new WP_Error('csv_bad_head_format', 'CSV файл имеет не правильный заголовок');
+		}
+		
+		$parse_error = new WP_Error();
+		
+		for($i=2;;$i++){
+			$str = fgets($csv_stream);
+			if($str === false)
+				break;
+			
+			$data = str_getcsv($str, ';');
+			$data = $this->parse_csv_str($data, $parse_error, $i);
+			//todo
+		}
+		fclose($csv_stream);
+	}
+
+	/**
+	 * преобразует результат str_getcsv() в массив с данными игрока и его рейтингами
+	 * ошибки парсинга добавляются в $parse_error
+	 * @param string[] $data - результат str_getcsv()
+	 * @param WP_Error $parse_error - хранит ошибки парсинга (csv_str_parse_error, csv_str_parse_warning)
+	 * @param int $str_number - номер обрабатываемой строки, нужен для указания ошибок
+	 * @return false|array
+	 * [
+	 * 	'player' => [
+	 * 		'id_ruchess'	=> int
+	 * 		'id_fide'		=> null|int
+	 * 		'name'			=> string
+	 * 		'sex'			=> bool
+	 * 		'country'		=> string
+	 * 		'birth_year'	=> null|int
+	 * 		'region_number'	=> int
+	 * 		'region_name'	=> string
+	 * 	],
+	 * 	'rating' => [
+	 * 		'ruchess'		=> null|int
+	 * 		'fide'			=> null|int
+	 * 	]
+	 * ]
+	 */
+	protected function parse_csv_str($data, $parse_error, $str_number){
+		if(sizeof($data) !== 10){
+			$parse_error->add('csv_str_parse_error', 'Строка '.$str_number.': Неверное кол-во элементов');
+			return false;
+		}
+		
+		$ret = [
+			'player' => [
+				'id_ruchess'	=> $data[0],//ID_No
+				'id_fide'		=> $data[8],//Fide_No
+				'name'			=> $data[1],//Name
+				'sex'			=> $data[2],//Sex
+				'country'		=> $data[3],//Fed
+				'birth_year'	=> $data[6],//Birthday
+				'region_number'	=> $data[4],//Clubnumber
+				'region_name'	=> $data[5] //ClubName
+			],
+			'rating' => [
+				'ruchess'		=> $data[7],//Rtg_Nat
+				'fide'			=> $data[9] //Rtg_Int
+			]
+		];
+		
+		$ret['player']['id_ruchess'] = absint($ret['player']['id_ruchess']);
+		if($ret['player']['id_ruchess'] === 0){
+			$parse_error->add('csv_str_parse_error', 'Строка '.$str_number.': id_ruchess (ID_No) не задано');
+			return false;
+		}
+
+		$ret['player']['id_fide'] = absint($ret['player']['id_fide']);
+		if($ret['player']['id_fide'] === 0){
+			$parse_error->add('csv_str_parse_warning', 'Строка '.$str_number.': id_fide (Fide_No) не задано');
+			$ret['player']['id_fide'] = null;
+		}
+
+		$ret['player']['name'] = trim($ret['player']['name']);
+		
+		switch(mb_strtolower($ret['player']['sex'])){
+			case 'f':
+			case 'female':
+			case 'woman':
+			case 'ж':
+			case 'жен':
+				$ret['player']['sex'] = 1;
+				break;
+			default:
+				$ret['player']['sex'] = 0;
+				break;
+				
+		}
+
+		$ret['player']['country'] = trim($ret['player']['country']);
+		
+		$ret['player']['birth_year'] = absint($ret['player']['birth_year']);
+		if($ret['player']['birth_year'] == 0){
+			$ret['player']['birth_year'] = null;
+		}else if($ret['player']['birth_year'] < 1901 || $ret['player']['birth_year'] > 2155){
+			$parse_error->add('csv_str_parse_error', 'Строка '.$str_number.': birth_year (Birthday) выходит за пределы');
+			return false;
+		}
+
+		$ret['player']['region_number'] = absint($ret['player']['region_number']);
+
+		$ret['player']['region_name'] = trim($ret['player']['region_name']);
+		
+		if((string)$ret['rating']['ruchess'] === ''){
+			$ret['rating']['ruchess'] = null;
+		}else{
+			$ret['rating']['ruchess'] = absint($ret['rating']['ruchess']);
+		}
+
+		if((string)$ret['rating']['fide'] === ''){
+			$ret['rating']['fide'] = null;
+		}else{
+			$ret['rating']['fide'] = absint($ret['rating']['fide']);
+		}
+		
+		return $ret;
 	}
 	
 	public function activate(){
@@ -92,7 +217,7 @@ class RadiofanChessParser{
 		$sql_rad_chess_players =
 			'CREATE TABLE '.$wpdb->prefix.'rad_chess_players (
 				id_ruchess    bigint(11) unsigned NOT NULL,
-				id_fide       bigint(11) unsigned NOT NULL,
+				id_fide       bigint(11) unsigned,
 				name          text                NOT NULL,
 				sex           bool                NOT NULL COMMENT \'0 - м, 1 - ж\',
 				country       tinytext            NOT NULL,
