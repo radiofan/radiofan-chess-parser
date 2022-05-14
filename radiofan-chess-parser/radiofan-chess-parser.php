@@ -12,5 +12,7 @@
 
 if(!defined('ABSPATH')) die();
 
+require_once 'install-uninstall-trait.php';
+require_once 'parser-trait.php';
 require_once 'radiofan-chess-parser-class.php';
-$radiofan_chess_parser = new RadiofanChessParser(__FILE__);
+$radiofan_chess_parser = new Radiofan\ChessParser\ChessParser(__FILE__);
