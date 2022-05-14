@@ -1,7 +1,13 @@
 <?php
 
 class RadiofanChessParser{
-	
+
+	/**
+	 * @var bool будет ли проводиться проверка etag перед скачиванием файлов
+	 * @see https://developer.mozilla.org/ru/docs/Web/HTTP/Headers/ETag
+	 */
+	const CHECK_ETAG = true;
+
 	/** @var string $plugin_path - путь к главному файлу */
 	protected $plugin_path;
 	/** @var string $plugin_dir - путь к папке плагина */
@@ -12,13 +18,13 @@ class RadiofanChessParser{
 	protected $plugin_url;
 
 	public function __construct(string $plugin_path = __FILE__){
-		
+
 		$this->plugin_path = $plugin_path;
 		$this->plugin_dir = plugin_dir_path($this->plugin_path);
 		$this->plugin_dir_name = basename($this->plugin_dir);
 		$this->plugin_url = plugin_dir_url($this->plugin_path);
-		
-		
+
+
 		register_activation_hook($this->plugin_path, [$this, 'activate']);
 		register_deactivation_hook($this->plugin_path, [$this, 'deactivate']);
 
@@ -30,15 +36,67 @@ class RadiofanChessParser{
 	 */
 	public function test_download($screen){
 		error_log('test_download');//todo delme
-		
+
 		/*
 		 * empty_memory_peak(1): 2 МБ (2097152), empty_memory_peak(0): 40 МБ (41225784)
 		 * unzip_memory_peak(1): 34 МБ (35651584), unzip_memory_peak(0): 71 МБ (74926456)
+		 * wordpress_download_memory_peak(1): 8 МБ (8388608), wordpress_download_memory_peak(0): 40 МБ (41714808)
+		 * download_memory_peak(1): 6 МБ (6291456), download_memory_peak(0): 39 МБ (41265256)
 		 */
 
+		//$ret = download_url('https://ratings.ruchess.ru/api/smanager_standard.csv.zip');
 		//$this->unzip_file($this->plugin_dir.'smanager_standard.zip', 'files/unzip/');
-		//error_log('unzip_memory_peak(1): '.size_format(memory_get_peak_usage(1)).' ('.memory_get_peak_usage(1).'), unzip_memory_peak(0): '.size_format(memory_get_peak_usage()).' ('.memory_get_peak_usage().')');
+		//$ret = $this->download_file('https://ratings.ruchess.ru/api/smanager_standard.csv.zip', $this->plugin_dir.'files/file.zip', '"627f456a-5c2ee8"');
+		error_log('wordpress_download_memory_peak(1): '.size_format(memory_get_peak_usage(1)).' ('.memory_get_peak_usage(1).'), wordpress_download_memory_peak(0): '.size_format(memory_get_peak_usage()).' ('.memory_get_peak_usage().')');
 	}
+
+	/**
+	 * @param string $url - адрес скачиваемого файла
+	 * @param string $file_to - абсолютный путь к месту расположения скачиваемого файла
+	 * @param null|string $etag - @see https://developer.mozilla.org/ru/docs/Web/HTTP/Headers/ETag
+	 * @return WP_Error
+	 */
+	public function download_file($url, $file_to, $etag = null){
+
+		//проверка etag
+		$new_etag = null;
+		if(!is_null($etag)){
+			$etag = preg_replace('#[^0-9a-z_\\-"\']#iu', '', (string)$etag);
+			
+			$ret = wp_remote_head($url, ['redirection' => 0, 'user-agent' => 'RADIOFAN Chess Parser', 'sslverify' => 0, 'headers' => ['If-None-Match' => $etag]]);
+
+			if((int) $ret['response']['code'] === 304){
+				return new WP_Error('download_not_need_update', 'Файл не требует обновления');
+			}
+			if((int) $ret['response']['code'] !== 200){
+				return new WP_Error('download_undefined_error', 'Не удалось получить данные о файле', $ret);
+			}
+
+			$headers = $ret['headers'];
+			if(is_array($headers)){
+				if(isset($headers['etag'][0]))
+					$new_etag = preg_replace('#[^0-9a-z_\\-"\']#iu', '', $headers['etag'][0]);
+			}else{
+				/** @var Requests_Response_Headers $headers */
+				$new_etag = preg_replace('#[^0-9a-z_\\-"\']#iu', '', $headers->offsetGet('etag'));
+			}
+		}
+
+		//скачивание файла		
+		$ret = wp_remote_get($url, ['redirection' => 0, 'user-agent' => 'RADIOFAN Chess Parser', 'sslverify' => 0, 'timeout' => 300, 'stream' => 1, 'filename' => $file_to]);
+
+		if((int) $ret['response']['code'] !== 200){
+			return new WP_Error('download_undefined_error', 'Не удалось скачать файл', $ret);
+		}
+
+		$ret = new WP_Error('download_success', 'Файл скачан', $ret);
+		if($new_etag){
+			$ret->add('new_etag', '', $new_etag);
+		}
+
+		return $ret;
+	}
+
 
 	/**
 	 * @param string $zip - абсолютный путь к архиву
@@ -48,7 +106,7 @@ class RadiofanChessParser{
 	protected function unzip_file($zip, $dir_to){
 		if(!file_exists($zip) || !is_file($zip))
 			return new WP_Error('archive_not_exist', 'Архив не найден!');
-		
+
 		//инициализация функции распаковки
 		if(!function_exists('unzip_file')){
 			require_once(ABSPATH.'wp-admin/includes/file.php');
@@ -60,7 +118,7 @@ class RadiofanChessParser{
 
 		$plugin_path = str_replace(ABSPATH, $wp_filesystem->abspath(), $this->plugin_dir);
 		$plugin_path .= $dir_to;
-		
+
 		return unzip_file($zip, $plugin_path);
 	}
 
@@ -71,11 +129,11 @@ class RadiofanChessParser{
 	protected function parse_csv($csv){
 		if(!file_exists($csv) || !is_file($csv))
 			return new WP_Error('csv_not_exist', 'CSV файл не найден!');
-		
+
 		$csv_stream = fopen($csv, 'r');
 		if($csv_stream === false)
 			return new WP_Error('csv_not_open', 'CSV файл не открыт!');
-		
+
 		//проверка заголовка
 		$str = (string)fgets($csv_stream);
 		$data = str_getcsv($str, ';');
@@ -83,14 +141,14 @@ class RadiofanChessParser{
 			fclose($csv_stream);
 			return new WP_Error('csv_bad_head_format', 'CSV файл имеет не правильный заголовок');
 		}
-		
+
 		$parse_error = new WP_Error();
-		
+
 		for($i=2;;$i++){
 			$str = fgets($csv_stream);
 			if($str === false)
 				break;
-			
+
 			$data = str_getcsv($str, ';');
 			$data = $this->parse_csv_str($data, $parse_error, $i);
 			//todo
@@ -127,7 +185,7 @@ class RadiofanChessParser{
 			$parse_error->add('csv_str_parse_error', 'Строка '.$str_number.': Неверное кол-во элементов');
 			return false;
 		}
-		
+
 		$ret = [
 			'player' => [
 				'id_ruchess'	=> $data[0],//ID_No
@@ -144,7 +202,7 @@ class RadiofanChessParser{
 				'fide'			=> $data[9] //Rtg_Int
 			]
 		];
-		
+
 		$ret['player']['id_ruchess'] = absint($ret['player']['id_ruchess']);
 		if($ret['player']['id_ruchess'] === 0){
 			$parse_error->add('csv_str_parse_error', 'Строка '.$str_number.': id_ruchess (ID_No) не задано');
@@ -158,7 +216,7 @@ class RadiofanChessParser{
 		}
 
 		$ret['player']['name'] = trim($ret['player']['name']);
-		
+
 		switch(mb_strtolower($ret['player']['sex'])){
 			case 'f':
 			case 'female':
@@ -170,11 +228,11 @@ class RadiofanChessParser{
 			default:
 				$ret['player']['sex'] = 0;
 				break;
-				
+
 		}
 
 		$ret['player']['country'] = trim($ret['player']['country']);
-		
+
 		$ret['player']['birth_year'] = absint($ret['player']['birth_year']);
 		if($ret['player']['birth_year'] == 0){
 			$ret['player']['birth_year'] = null;
@@ -186,7 +244,7 @@ class RadiofanChessParser{
 		$ret['player']['region_number'] = absint($ret['player']['region_number']);
 
 		$ret['player']['region_name'] = trim($ret['player']['region_name']);
-		
+
 		if((string)$ret['rating']['ruchess'] === ''){
 			$ret['rating']['ruchess'] = null;
 		}else{
@@ -198,21 +256,21 @@ class RadiofanChessParser{
 		}else{
 			$ret['rating']['fide'] = absint($ret['rating']['fide']);
 		}
-		
+
 		return $ret;
 	}
-	
+
 	public function activate(){
 		if(!current_user_can('activate_plugins'))
 			return;
 		$plugin = $_REQUEST['plugin'] ?? '';
 		check_admin_referer('activate-plugin_'.$plugin);
-		
+
 		//создаем таблицы
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
 		global $wpdb;
-		
+
 		//rad_chess_players
 		$sql_rad_chess_players =
 			'CREATE TABLE '.$wpdb->prefix.'rad_chess_players (
@@ -226,7 +284,7 @@ class RadiofanChessParser{
 				region_name   text                NOT NULL default \'\',
 				PRIMARY KEY  (id_ruchess)
 			) DEFAULT CHARACTER SET '.$wpdb->charset.' COLLATE '.$wpdb->collate.';';
-		
+
 		//rad_chess_players_ratings
 		$sql_rad_chess_players_ratings =
 			'CREATE TABLE '.$wpdb->prefix.'rad_chess_players_ratings (
@@ -238,7 +296,7 @@ class RadiofanChessParser{
 			) DEFAULT CHARACTER SET '.$wpdb->charset.' COLLATE '.$wpdb->collate.';';
 
 		dbDelta([$sql_rad_chess_players, $sql_rad_chess_players_ratings]);
-		
+
 		error_log('activate');//todo delme
 	}
 
@@ -254,7 +312,7 @@ class RadiofanChessParser{
 	public static function uninstall(){
 		if(!current_user_can('activate_plugins'))
 			return;
-		
+
 		if(!defined('WP_UNINSTALL_PLUGIN'))
 			return;
 
