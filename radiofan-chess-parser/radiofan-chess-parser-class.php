@@ -2,6 +2,12 @@
 
 class RadiofanChessParser{
 	
+	/**
+	 * @var bool будет ли проводиться проверка etag перед скачиванием файлов
+	 * @see https://developer.mozilla.org/ru/docs/Web/HTTP/Headers/ETag
+	 */
+	const CHECK_ETAG = true;
+	
 	/** @var string $plugin_path - путь к главному файлу */
 	protected $plugin_path;
 	/** @var string $plugin_dir - путь к папке плагина */
@@ -34,11 +40,89 @@ class RadiofanChessParser{
 		/*
 		 * empty_memory_peak(1): 2 МБ (2097152), empty_memory_peak(0): 40 МБ (41225784)
 		 * unzip_memory_peak(1): 34 МБ (35651584), unzip_memory_peak(0): 71 МБ (74926456)
+		 * wordpress_download_memory_peak(1): 42 МБ (44040192), wordpress_download_memory_peak(0): 40 МБ (41676872)
+		 * download_memory_peak(1): 6 МБ (6291456), download_memory_peak(0): 39 МБ (41265256)
 		 */
-
+		
+		//$ret = download_url('https://ratings.ruchess.ru/api/smanager_standard.csv.zip');
 		//$this->unzip_file($this->plugin_dir.'smanager_standard.zip', 'files/unzip/');
-		//error_log('unzip_memory_peak(1): '.size_format(memory_get_peak_usage(1)).' ('.memory_get_peak_usage(1).'), unzip_memory_peak(0): '.size_format(memory_get_peak_usage()).' ('.memory_get_peak_usage().')');
+		$ret = $this->download_file('https://ratings.ruchess.ru/api/smanager_standard.csv.zip', $this->plugin_dir.'files/file.zip', '"627f456a-5c2ee8"');
+		error_log('download_memory_peak(1): '.size_format(memory_get_peak_usage(1)).' ('.memory_get_peak_usage(1).'), download_memory_peak(0): '.size_format(memory_get_peak_usage()).' ('.memory_get_peak_usage().')');
 	}
+
+	public function download_file($url, $file_to, $etag = null){
+		
+		//проверка etag
+		$new_etag = null;
+		if(!is_null($etag)){
+			$etag = preg_replace('#[^0-9a-z_\\-"\']#iu', '', (string)$etag);
+			$option = [
+				CURLOPT_URL 			=> $url,
+				CURLOPT_RETURNTRANSFER	=> 1,	//вернем тело ответа в строку
+				CURLOPT_NOBODY			=> 1,	//не загружать тело страницы
+				CURLOPT_HEADER			=> 1,	//заголовки респонса
+				CURLINFO_HEADER_OUT		=> 1,	//поместить в curl_getinfo данные запроса
+				CURLOPT_CONNECTTIMEOUT	=> 30,	//таймаут соединения
+				CURLOPT_TIMEOUT			=> 30,	//таймаут ответа
+				CURLOPT_FAILONERROR		=> 0,	//подробный отчет о неудаче (не нужен)
+				CURLOPT_SSL_VERIFYPEER	=> 0,	//Не проверяем ССЛ
+				CURLOPT_HTTPHEADER		=> ['If-None-Match: '.$etag]
+			];
+
+			$ch = curl_init();
+			curl_setopt_array($ch, $option);
+			$output = array('content' => curl_exec($ch), 'info' => curl_getinfo($ch), 'status' => curl_errno($ch), 'status_text' => curl_error($ch));
+			curl_close($ch);
+			
+			if((int) $output['info']['http_code'] === 304){
+				return new WP_Error('download_not_need_update', 'Файл не требует обновления');
+			}
+			if((int) $output['info']['http_code'] !== 200){
+				return new WP_Error('download_undefined_error', 'Не удалось получить данные о файле', $output);
+			}
+			
+			$matches = [];
+			preg_match('#etag: ([0-9a-z_\\-"]+)#iu', $output['content'], $matches);
+			if(isset($matches[1]))
+				$new_etag = $matches[1];
+		}
+		
+		//скачивание файла
+		$file_to_desc = fopen($file_to, 'w');
+		if(!$file_to_desc)
+			return new WP_Error('download_desc_not_open', 'Не удалось открыть дескриптор для скачиваемого файла');
+		
+		$option = [
+			CURLOPT_URL => $url,
+			CURLOPT_NOBODY			=> 0,	//не загружать тело страницы
+			CURLOPT_HEADER			=> 0,	//заголовки респонса
+			CURLOPT_CONNECTTIMEOUT	=> 30,	//таймаут соединения
+			CURLOPT_TIMEOUT			=> 300,	//таймаут ответа
+			CURLOPT_FAILONERROR		=> 0,	//подробный отчет о не удаче (не нужен)
+			CURLOPT_FILE 			=> $file_to_desc,//дескриптор файла для помещения тела ответа
+			CURLOPT_SSL_VERIFYPEER	=> 0,	//Не проверяем ССЛ
+		];
+
+		$ch = curl_init();
+		curl_setopt_array($ch, $option);
+		curl_exec($ch);
+		fclose($file_to_desc);
+
+		$output = array('info' => curl_getinfo($ch), 'status' => curl_errno($ch), 'status_text' => curl_error($ch));
+		curl_close($ch);
+
+		if((int) $output['info']['http_code'] !== 200){
+			return new WP_Error('download_undefined_error', 'Не удалось скачать файл', $output);
+		}
+		
+		$ret = new WP_Error('download_success', 'Файл скачан', $output);
+		if(!is_null($new_etag)){
+			$ret->add('new_etag', '', $new_etag);
+		}
+		
+		return $ret;
+	}
+	
 
 	/**
 	 * @param string $zip - абсолютный путь к архиву
