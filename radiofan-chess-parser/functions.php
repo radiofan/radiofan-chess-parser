@@ -9,11 +9,9 @@ function user_import_filter(
 	string $country,
 	?int $birth_year,
 	int $region_number,
-	string $region_name,
-	?int $rating_ruchess,
-	?int $rating_fide
+	string $region_name
 ){
 	$accept = true;
-	eval(" ");//todo фильтр из админки
+	eval('$accept = ($region_number == 22);');//todo фильтр из админки
 	return $accept;
 }

@@ -1,2 +1,8 @@
 /.idea
 *.log
+*.http
+*.cmd
+*.bat
+*.bundle
+/radiofan-chess-parser/files
+!/radiofan-chess-parser/files/.htaccess

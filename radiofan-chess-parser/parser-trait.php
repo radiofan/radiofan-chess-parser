@@ -9,9 +9,9 @@ trait Parser{
 	 * @param string $url - адрес скачиваемого файла
 	 * @param string $file_to - абсолютный путь к месту расположения скачиваемого файла
 	 * @param null|string $etag - @see https://developer.mozilla.org/ru/docs/Web/HTTP/Headers/ETag
-	 * @return WP_Error
+	 * @return WP_Error (download_not_need_update, download_undefined_error, download_success)
 	 */
-	public function download_file($url, $file_to, $etag = null){
+	protected function download_file($url, $file_to, $etag = null){
 
 		//проверка etag
 		$new_etag = null;
@@ -78,32 +78,59 @@ trait Parser{
 
 	/**
 	 * @param string $csv - абсолютный путь к csv файлу
-	 * @param bool $update - будут ли обновляться уже добавленные игроки
-	 * @return WP_Error
+	 * @param WP_Error $parse_error - хранит ошибки парсинга (csv_not_open, csv_bad_head_format, csv_str_parse_error, csv_str_parse_warning, csv_parsing_complete)
+	 * @return false|array
+	 * [
+	 * 	'player' => [
+	 * 		[
+	 * 			'id_ruchess'	=> int
+	 * 			'id_fide'		=> null|int
+	 * 			'name'			=> string
+	 * 			'sex'			=> bool		//0-м, 1-ж
+	 * 			'country'		=> string
+	 * 			'birth_year'	=> null|int
+	 * 			'region_number'	=> int
+	 * 			'region_name'	=> string
+	 * 		],
+	 * 		...
+	 * 	],
+	 * 	'rating' => [
+	 * 		[
+	 * 			'id_ruchess'	=> int,
+	 * 			'rating_type'	=> 1,		//рейтинг ruchess
+	 * 			'rating'		=> int
+	 * 		],
+	 * 		[
+	 * 			'id_ruchess'	=> int,
+	 * 			'rating_type'	=> 2,		//рейтинг fide
+	 * 			'rating'		=> int
+	 * 		],
+	 * 		...
+	 * 	]
+	 * ]
 	 */
-	protected function parse_csv($csv, $update = true){
-		$time_statistic = ['parsing_start' => microtime(1)];
-		if(!file_exists($csv) || !is_file($csv))
-			return new WP_Error('csv_not_exist', 'CSV файл не найден!');
+	protected function parse_csv($csv, $parse_error){
+		$time_statistic = ['csv_parsing_start' => microtime(1)];
 
 		$csv_stream = fopen($csv, 'r');
-		if($csv_stream === false)
-			return new WP_Error('csv_not_open', 'CSV файл не открыт!');
+		if($csv_stream === false){
+			$parse_error->add('csv_not_open', 'CSV файл не открыт!', $csv);
+			return false;
+		}
 
 		//проверка заголовка
 		$str = (string)fgets($csv_stream);
-		$data = str_getcsv($str, ';');
+		$data = str_getcsv($str, ',');
 		if($data !== ['ID_No','Name','Sex','Fed','Clubnumber','ClubName','Birthday','Rtg_Nat','Fide_No','Rtg_Int']){
 			fclose($csv_stream);
-			return new WP_Error('csv_bad_head_format', 'CSV файл имеет не правильный заголовок');
+			$parse_error->add('csv_bad_head_format', 'CSV файл имеет не правильный заголовок', $data);
+			return false;
 		}
-		
-		$parse_error = new WP_Error();
-		
+				
 		$player_data_to_import = [];
 		$rating_data_to_import = [];
 		
-		$statistic = ['str_corrupted' => 0, 'str_all' => 0, 'str_filtered' => 0, 'players_was' => null, 'players_now' => null, 'players_added' => null];
+		$statistic = ['str_corrupted' => 0, 'str_all' => 0, 'str_filtered' => 0];
 		
 		for($i=2;;$i++){
 			$str = fgets($csv_stream);
@@ -112,7 +139,7 @@ trait Parser{
 
 			$statistic['str_all']++;
 			
-			$data = str_getcsv($str, ';');
+			$data = str_getcsv($str, ',');
 			$data = $this->parse_csv_str($data, $parse_error, $i);
 			if($data === false){
 				$statistic['str_corrupted']++;
@@ -125,57 +152,16 @@ trait Parser{
 			$statistic['str_filtered']++;
 
 			$player_data_to_import[] = $data['player'];
-			$rating_data_to_import[] = ['id_ruchess' => $data['player']['id_ruchess'], 'rating_type' => null, 'rating' => $data['rating']['ruchess']];//todo
-			$rating_data_to_import[] = ['id_ruchess' => $data['player']['id_ruchess'], 'rating_type' => null, 'rating' => $data['rating']['fide']];//todo
+			$rating_data_to_import = array_merge($rating_data_to_import, $data['rating']);
 		}
 		fclose($csv_stream);
-		$time_statistic['csv_parsing'] = microtime(1);
-		//todo parsing log
-
-		global $wpdb;
-		$statistic['players_was'] = $wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players`');
-		for($i=0; $i<$statistic['str_filtered']; $i += 100){
-			$query = 'INSERT '.(!$update ? 'IGNORE ' : '').'INTO `'.$wpdb->prefix.'rad_chess_players` (`id_ruchess`, `id_fide`, `name`, `sex`, `country`, `birth_year`, `region_number`, `region_name`) VALUES ';
-			for($x=$i; $x<$i+100 && $x<$statistic['str_filtered']; $x++){
-				/*
-				$query .= '('.$player_data_to_import[$x]['id_ruchess'].
-					', '.$player_data_to_import[$x]['id_fide'].
-					', '.$wpdb->prepare('%s', $player_data_to_import[$x]['name']).
-					', '.$player_data_to_import[$x]['sex'].
-					', '.$wpdb->prepare('%s', $player_data_to_import[$x]['country']).
-					', '.$player_data_to_import[$x]['birth_year'].
-					', '.$player_data_to_import[$x]['region_number'].
-					', '.$wpdb->prepare('%s', $player_data_to_import[$x]['region_name']).'), ';
-				*/
-				$query .= $wpdb->prepare(
-					'(?i, ?i, ?s, ?i, ?s, ?i, ?i, ?s), ',
-					$player_data_to_import[$x]['id_ruchess'],
-					$player_data_to_import[$x]['id_fide'],
-					$player_data_to_import[$x]['name'],
-					$player_data_to_import[$x]['sex'],
-					$player_data_to_import[$x]['country'],
-					$player_data_to_import[$x]['birth_year'],
-					$player_data_to_import[$x]['region_number'],
-					$player_data_to_import[$x]['region_name']
-				);
-			}
-			$query = mb_substr($query, 0, mb_strlen($query)-2);
-			if($update){
-				//$query .= 'AS new ON DUPLICATE KEY UPDATE `id_fide` = new.id_fide, `name` = new.name, `sex` = new.sex, `country` = new.country, `birth_year` = new.birth_year, `region_number` = new.region_number, `region_name` = new.region_name';
-				$query .= ' ON DUPLICATE KEY UPDATE `id_fide` = VALUES(id_fide), `name` = VALUES(name), `sex` = VALUES(sex), `country` = VALUES(country), `birth_year` = VALUES(birth_year), `region_number` = VALUES(region_number), `region_name` = VALUES(region_name)';
-			}
-			
-			if($wpdb->query($query) === false){
-				$parse_error->add('db_players_insert_failed', 'Не удалось добавить данные пользователей', [$query, $wpdb->last_error]);
-			}
-		}
+		$time_statistic['csv_parsing_end'] = microtime(1);
+		$time_statistic['csv_parsing_time'] = $time_statistic['csv_parsing_end'] - $time_statistic['csv_parsing_start'];
 		
-		$time_statistic['players_insert'] = microtime(1);
-
-		$statistic['players_now'] = $wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players`');
-		$statistic['players_added'] = $statistic['players_now'] - $statistic['players_was'];
+		$parse_error->add('csv_parsing_complete', 'Парсинг завершен', array_merge($time_statistic, $statistic));
 		
-		//todo разделить методы парсинга и вставки в бд
+		return ['player' => $player_data_to_import, 'rating' => $rating_data_to_import];
+		
 		
 		//todo вставка рейтингов
 	}
@@ -192,15 +178,24 @@ trait Parser{
 	 * 		'id_ruchess'	=> int
 	 * 		'id_fide'		=> null|int
 	 * 		'name'			=> string
-	 * 		'sex'			=> bool
+	 * 		'sex'			=> bool			//0-м, 1-ж
 	 * 		'country'		=> string
 	 * 		'birth_year'	=> null|int
 	 * 		'region_number'	=> int
 	 * 		'region_name'	=> string
 	 * 	],
 	 * 	'rating' => [
-	 * 		'ruchess'		=> null|int
-	 * 		'fide'			=> null|int
+	 * 		//может содержать 0 - 2 массива
+	 * 		[
+	 * 			'id_ruchess'	=> int,
+	 * 			'rating_type'	=> 1,		//рейтинг ruchess
+	 * 			'rating'		=> int
+	 * 		],
+	 * 		[
+	 * 			'id_ruchess'	=> int,
+	 * 			'rating_type'	=> 2,		//рейтинг fide
+	 * 			'rating'		=> int
+	 * 		]
 	 * 	]
 	 * ]
 	 */
@@ -221,10 +216,7 @@ trait Parser{
 				'region_number'	=> $data[4],//Clubnumber
 				'region_name'	=> $data[5] //ClubName
 			],
-			'rating' => [
-				'ruchess'		=> $data[7],//Rtg_Nat
-				'fide'			=> $data[9] //Rtg_Int
-			]
+			'rating' => []
 		];
 
 		$ret['player']['id_ruchess'] = absint($ret['player']['id_ruchess']);
@@ -235,7 +227,7 @@ trait Parser{
 
 		$ret['player']['id_fide'] = absint($ret['player']['id_fide']);
 		if($ret['player']['id_fide'] === 0){
-			$parse_error->add('csv_str_parse_warning', 'Строка '.$str_number.': id_fide (Fide_No) не задано');
+			//$parse_error->add('csv_str_parse_warning', 'Строка '.$str_number.': id_fide (Fide_No) не задано');//очень частое явление
 			$ret['player']['id_fide'] = null;
 		}
 
@@ -268,23 +260,89 @@ trait Parser{
 		$ret['player']['region_number'] = absint($ret['player']['region_number']);
 
 		$ret['player']['region_name'] = trim($ret['player']['region_name']);
-
-		if((string)$ret['rating']['ruchess'] === ''){
-			$ret['rating']['ruchess'] = null;
-		}else{
-			$ret['rating']['ruchess'] = absint($ret['rating']['ruchess']);
+		
+		
+		$rating_ruchess = $data[7];//Rtg_Nat
+		$rating_fide    = $data[9];//Rtg_Int
+		
+		if($rating_ruchess !== ''){
+			$ret['rating'][] =['id_ruchess' => $ret['player']['id_ruchess'], 'rating_type' => 1, 'rating' => absint($rating_ruchess)];
 		}
-
-		if((string)$ret['rating']['fide'] === ''){
-			$ret['rating']['fide'] = null;
-		}else{
-			$ret['rating']['fide'] = absint($ret['rating']['fide']);
+		if($rating_fide !== ''){
+			$ret['rating'][] =['id_ruchess' => $ret['player']['id_ruchess'], 'rating_type' => 2, 'rating' => absint($rating_fide)];
 		}
 
 		return $ret;
 	}
-	
+
+	/**
+	 * Проверяет данные на допуск с помощью функции user_import_filter(), используется пользовательский фильтр
+	 * @see user_import_filter()
+	 * @param array $data - резултат удачной работы Parser::parse_csv_str()
+	 * @return bool - true - данные допущены
+	 */
 	protected function user_import_filter($data){
-		return (bool) user_import_filter(...$data['player'], ...$data['rating']);
+		return (bool) user_import_filter(
+			$data['player']['id_ruchess'],
+			$data['player']['id_fide'],
+			$data['player']['name'],
+			$data['player']['sex'],
+			$data['player']['country'],
+			$data['player']['birth_year'],
+			$data['player']['region_number'],
+			$data['player']['region_name']
+		);
+	}
+	
+	/**
+	 * @param array $players - массив из player'ов see Parser::parse_csv
+	 * @see Parser::parse_csv
+	 * @param WP_Error $import_error - хранит ошибки импорта (db_import_players_failed, db_import_players_complete)
+	 * @param bool $update - будут ли обновляться уже добавленные игроки
+	 * @return true
+	 */
+	protected function db_import_players($players, $import_error, $update = true){
+		global $wpdb;
+		$time_statistic = ['players_import_start' => microtime(1)];
+		$statistic = [];
+		$statistic['players_was'] = $wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players`');
+		
+		$players_len = sizeof($players);
+		for($i=0; $i<$players_len; $i += 100){
+			$query = 'INSERT '.(!$update ? 'IGNORE ' : '').'INTO `'.$wpdb->prefix.'rad_chess_players` (`id_ruchess`, `id_fide`, `name`, `sex`, `country`, `birth_year`, `region_number`, `region_name`) VALUES ';
+			for($x=$i; $x<$i+100 && $x<$players_len; $x++){
+				$query .= $wpdb->prepare(
+					'(?i, ?i, ?s, ?i, ?s, ?i, ?i, ?s), ',
+					$players[$x]['id_ruchess'],
+					$players[$x]['id_fide'],
+					$players[$x]['name'],
+					$players[$x]['sex'],
+					$players[$x]['country'],
+					$players[$x]['birth_year'],
+					$players[$x]['region_number'],
+					$players[$x]['region_name']
+				);
+			}
+			$query = mb_substr($query, 0, mb_strlen($query)-2);
+			if($update){
+				//MySQL  >= 8.0.20
+				//$query .= 'AS new ON DUPLICATE KEY UPDATE `id_fide` = new.id_fide, `name` = new.name, `sex` = new.sex, `country` = new.country, `birth_year` = new.birth_year, `region_number` = new.region_number, `region_name` = new.region_name';
+				$query .= ' ON DUPLICATE KEY UPDATE `id_fide` = VALUES(id_fide), `name` = VALUES(name), `sex` = VALUES(sex), `country` = VALUES(country), `birth_year` = VALUES(birth_year), `region_number` = VALUES(region_number), `region_name` = VALUES(region_name)';
+			}
+
+			if($wpdb->query($query) === false){
+				$import_error->add('db_import_players_failed', 'Не удалось добавить данные пользователей', [$query, $wpdb->last_error]);
+			}
+		}
+
+		$time_statistic['players_import_end'] = microtime(1);
+		$time_statistic['players_import_time'] = $time_statistic['players_import_end'] - $time_statistic['players_import_start'];
+
+		$statistic['players_now'] = $wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players`');
+		$statistic['players_added'] = $statistic['players_now'] - $statistic['players_was'];
+
+		$import_error->add('db_import_players_complete', 'Вставка завершена', array_merge($time_statistic, $statistic));
+
+		return true;
 	}
 }

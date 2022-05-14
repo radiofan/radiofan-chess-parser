@@ -1,5 +1,4 @@
 <?php
-
 namespace Radiofan\ChessParser;
 
 trait InstallUninstall{
