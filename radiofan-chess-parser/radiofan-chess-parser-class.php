@@ -50,7 +50,7 @@ class ChessParser{
 
 		//$ret = download_url('https://ratings.ruchess.ru/api/smanager_standard.csv.zip');
 		//$this->unzip_file($this->plugin_dir.'smanager_standard.zip', 'files/unzip/');
-		$ret = $this->download_file('https://ratings.ruchess.ru/api/smanager_standard.csv.zip', $this->plugin_dir.'files/file.zip', '"627f78fc-5c310c"');
+		//$ret = $this->download_file('https://ratings.ruchess.ru/api/smanager_standard.csv.zip', $this->plugin_dir.'files/file.zip', '"627f78fc-5c310c"');
 		error_log('wordpress_download_memory_peak(1): '.size_format(memory_get_peak_usage(1)).' ('.memory_get_peak_usage(1).'), wordpress_download_memory_peak(0): '.size_format(memory_get_peak_usage()).' ('.memory_get_peak_usage().')');
 	}
 }
