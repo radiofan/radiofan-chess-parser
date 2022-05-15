@@ -312,13 +312,11 @@ trait Parser{
 			$query = 'INSERT '.(!$update ? 'IGNORE ' : '').'INTO `'.$wpdb->prefix.'rad_chess_players` (`id_ruchess`, `id_fide`, `name`, `sex`, `country`, `birth_year`, `region_number`, `region_name`) VALUES ';
 			for($x=$i; $x<$i+100 && $x<$players_len; $x++){
 				$query .= $wpdb->prepare(
-					'(?i, ?i, ?s, ?i, ?s, ?i, ?i, ?s), ',
+					'(%d, '.(is_null($players[$x]['id_fide']) ? 'NULL' : absint($players[$x]['id_fide'])).', %s, %d, %s, '.(is_null($players[$x]['birth_year']) ? 'NULL' : absint($players[$x]['birth_year'])).', %d, %s), ',
 					$players[$x]['id_ruchess'],
-					$players[$x]['id_fide'],
 					$players[$x]['name'],
 					$players[$x]['sex'],
 					$players[$x]['country'],
-					$players[$x]['birth_year'],
 					$players[$x]['region_number'],
 					$players[$x]['region_name']
 				);
@@ -341,7 +339,51 @@ trait Parser{
 		$statistic['players_now'] = $wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players`');
 		$statistic['players_added'] = $statistic['players_now'] - $statistic['players_was'];
 
-		$import_error->add('db_import_players_complete', 'Вставка завершена', array_merge($time_statistic, $statistic));
+		$import_error->add('db_import_players_complete', 'Вставка игроков завершена', array_merge($time_statistic, $statistic));
+
+		return true;
+	}
+
+	/**
+	 * @param array $ratings - массив из rating'ов see Parser::parse_csv
+	 * @see Parser::parse_csv
+	 * @param WP_Error $import_error - хранит ошибки импорта (db_import_ratings_failed, db_import_ratings_complete)
+	 * @param int $rating_type - 0 - standard, 1 - rapid, 2 - blitz
+	 */
+	protected function db_import_ratings($ratings, $import_error, $rating_type=0){
+		global $wpdb;
+		$time_statistic = ['ratings_import_start' => microtime(1)];
+		$statistic = [];
+		$statistic['ratings_was'] = $wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players_ratings`');
+		
+		$ratings_len = sizeof($ratings);
+		for($i=0; $i<$ratings_len; $i++){
+			$id = absint($ratings[$i]['id_ruchess']);
+			$cur_rating_type = $rating_type*2 + $ratings[$i]['rating_type'];
+			$rating = absint($ratings[$i]['rating']);
+			
+			$query = '
+				INSERT INTO '.$wpdb->prefix.'rad_chess_players_ratings (`id_ruchess`, `rating_type`, `rating`)
+				SELECT '.$id.', '.$cur_rating_type.', '.$rating.'
+				WHERE '.$rating.' != IFNULL((
+					SELECT `rating` FROM wp_rad_chess_players_ratings
+					WHERE `id_ruchess` = '.$id.' AND `rating_type` = '.$cur_rating_type.'
+					ORDER BY `update_date` DESC LIMIT 1
+				), -1)';
+			
+			if($wpdb->query($query) === false){
+				$import_error->add('db_import_ratings_failed', 'Не удалось добавить рейтинги', [$query, $wpdb->last_error]);
+			}
+		}
+		
+
+		$time_statistic['ratings_import_end'] = microtime(1);
+		$time_statistic['ratings_import_time'] = $time_statistic['ratings_import_end'] - $time_statistic['ratings_import_start'];
+
+		$statistic['ratings_now'] = $wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players_ratings`');
+		$statistic['ratings_added'] = $statistic['ratings_now'] - $statistic['ratings_was'];
+
+		$import_error->add('db_import_ratings_complete', 'Вставка рейтингов завершена', array_merge($time_statistic, $statistic));
 
 		return true;
 	}

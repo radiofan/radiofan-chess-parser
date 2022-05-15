@@ -4,5 +4,6 @@
 *.cmd
 *.bat
 *.bundle
+*.sql
 /radiofan-chess-parser/files
 !/radiofan-chess-parser/files/.htaccess

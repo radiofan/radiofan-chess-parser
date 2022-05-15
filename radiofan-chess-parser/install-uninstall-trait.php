@@ -33,8 +33,8 @@ trait InstallUninstall{
 			'CREATE TABLE '.$wpdb->prefix.'rad_chess_players_ratings (
 				id_ruchess    bigint(11) unsigned NOT NULL,
 				rating_type   tinyint    unsigned NOT NULL default \'0\' COMMENT \'1 - ruchess standard, 2 - fide standard, 3 - ruchess rapid, 4 - fide rapid, 5 - ruchess blitz, 6 - fide blitz\',
-				rating        int                          default NULL,
-				update_date   date                NOT NULL,
+				rating        int        unsigned NOT NULL,
+				update_date   timestamp           NOT NULL default CURRENT_TIMESTAMP,
 				KEY key_ratings_id_ruchess (id_ruchess)
 			) DEFAULT CHARACTER SET '.$wpdb->charset.' COLLATE '.$wpdb->collate.';';
 
