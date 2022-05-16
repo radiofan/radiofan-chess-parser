@@ -56,7 +56,13 @@ trait InstallUninstall{
 		$time = current_datetime();
 		$time = $time->setTime(0, 0);
 		$time = $time->add(new \DateInterval('P1D'));
-		wp_schedule_event($time->getTimestamp(), 'daily', 'radiofan_chess_parser_parse');
+		
+		//для каждого типа создадим свою cron задачу с интервалом в 10 мин
+		$types = [0 => 'standard', 1 => 'rapid', 2 => 'blitz'];
+		foreach($types as $type_id => $type){
+			wp_schedule_event($time->getTimestamp(), 'daily', 'radiofan_chess_parser_parse', [$type, $type_id]);
+			$time = $time->add(new \DateInterval('PT10M'));
+		}
 
 		error_log('activate');//todo delme
 	}
@@ -66,6 +72,10 @@ trait InstallUninstall{
 			return;
 		$plugin = $_REQUEST['plugin'] ?? '';
 		check_admin_referer('deactivate-plugin_'.$plugin);
+		
+		//чистим логи
+		global $wpdb;
+		$wpdb->query('TRUNCATE TABLE '.$wpdb->prefix.'rad_chess_logs');
 		
 		//отключаем cron
 		wp_unschedule_hook('radiofan_chess_parser_parse');
@@ -79,7 +89,8 @@ trait InstallUninstall{
 
 		if(!defined('WP_UNINSTALL_PLUGIN'))
 			return;
-
+		
+		//удаляем таблицы
 		global $wpdb;
 		$wpdb->query('DROP TABLE '.$wpdb->prefix.'rad_chess_players_ratings, '.$wpdb->prefix.'rad_chess_players');
 	}

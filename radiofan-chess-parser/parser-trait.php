@@ -9,10 +9,10 @@ trait Parser{
 	 * @param string $url - адрес скачиваемого файла
 	 * @param string $file_to - абсолютный путь к месту расположения скачиваемого файла
 	 * @param null|string $etag - @see https://developer.mozilla.org/ru/docs/Web/HTTP/Headers/ETag
-	 * @return WP_Error (download_not_need_update, download_undefined_error, download_success)
+	 * @return WP_Error (download_not_need_update, download_undefined_error, download_success, new_etag)
 	 */
 	protected function download_file($url, $file_to, $etag = null){
-
+		$time_statistic = ['download_file_start' => microtime(1)];
 		//проверка etag
 		$new_etag = null;
 		if(!is_null($etag)){
@@ -39,12 +39,15 @@ trait Parser{
 
 		//скачивание файла
 		$ret = wp_remote_get($url, ['redirection' => 0, 'user-agent' => 'RADIOFAN Chess Parser', 'sslverify' => 0, 'timeout' => 300, 'stream' => 1, 'filename' => $file_to]);
+		
+		$time_statistic['download_file_end'] = microtime(1);
+		$time_statistic['download_file_time'] = $time_statistic['download_file_end'] - $time_statistic['download_file_start'];
 
 		if((int) $ret['response']['code'] !== 200){
-			return new WP_Error('download_undefined_error', 'Не удалось скачать файл', $ret);
+			return new WP_Error('download_undefined_error', 'Не удалось скачать файл', [$ret, $time_statistic]);
 		}
 
-		$ret = new WP_Error('download_success', 'Файл скачан', $ret);
+		$ret = new WP_Error('download_success', 'Файл скачан', [$ret, $time_statistic]);
 		if($new_etag){
 			$ret->add('new_etag', '', $new_etag);
 		}
@@ -56,12 +59,12 @@ trait Parser{
 	/**
 	 * @param string $zip - абсолютный путь к архиву
 	 * @param string $dir_to - аюсолютный путь до папки куда распакуются файлы
-	 * @return true|WP_Error
+	 * @return WP_Error (unzip_file_success, данные возвращаемые unzip_file)
+	 * @see unzip_file
 	 */
 	protected function unzip_file($zip, $dir_to){
-		if(!file_exists($zip) || !is_file($zip))
-			return new WP_Error('archive_not_exist', 'Архив не найден!');
-
+		//todo очистка папки
+		$time_statistic = ['unzip_file_start' => microtime(1)];
 		//инициализация функции распаковки
 		if(!function_exists('unzip_file')){
 			require_once(ABSPATH.'wp-admin/includes/file.php');
@@ -73,48 +76,34 @@ trait Parser{
 
 		$dir_to = str_replace(ABSPATH, $wp_filesystem->abspath(), $dir_to);
 
-		return unzip_file($zip, $dir_to);
+		$ret = unzip_file($zip, $dir_to);
+		
+		$time_statistic['unzip_file_end'] = microtime(1);
+		$time_statistic['unzip_file_time'] = $time_statistic['unzip_file_end'] - $time_statistic['unzip_file_start'];
+		
+		if($ret === true){
+			return new WP_Error('unzip_file_success', 'Файл успешно распакован', [$time_statistic, $dir_to]);
+		}else{
+			return $ret;
+		}
 	}
 
 	/**
 	 * @param string $csv - абсолютный путь к csv файлу
-	 * @param WP_Error $parse_error - хранит ошибки парсинга (csv_not_open, csv_bad_head_format, csv_str_parse_error, csv_str_parse_warning, csv_parsing_complete)
+	 * @param WP_Error $parse_error - хранит ошибки парсинга (csv_open_error, csv_error_head_format, csv_str_parse_error, csv_str_parse_warning, csv_parsing_success)
 	 * @return false|array
 	 * [
-	 * 	'player' => [
-	 * 		[
-	 * 			'id_ruchess'	=> int
-	 * 			'id_fide'		=> null|int
-	 * 			'name'			=> string
-	 * 			'sex'			=> bool		//0-м, 1-ж
-	 * 			'country'		=> string
-	 * 			'birth_year'	=> null|int
-	 * 			'region_number'	=> int
-	 * 			'region_name'	=> string
-	 * 		],
-	 * 		...
-	 * 	],
-	 * 	'rating' => [
-	 * 		[
-	 * 			'id_ruchess'	=> int,
-	 * 			'rating_type'	=> 1,		//рейтинг ruchess
-	 * 			'rating'		=> int
-	 * 		],
-	 * 		[
-	 * 			'id_ruchess'	=> int,
-	 * 			'rating_type'	=> 2,		//рейтинг fide
-	 * 			'rating'		=> int
-	 * 		],
-	 * 		...
-	 * 	]
+	 * 	'player' => массив результатов parse_csv_str player
+	 * 	'rating' => массив результатов parse_csv_str rating
 	 * ]
+	 * @see Parser::parse_csv_str
 	 */
 	protected function parse_csv($csv, $parse_error){
 		$time_statistic = ['csv_parsing_start' => microtime(1)];
 
 		$csv_stream = fopen($csv, 'r');
 		if($csv_stream === false){
-			$parse_error->add('csv_not_open', 'CSV файл не открыт!', $csv);
+			$parse_error->add('csv_open_error', 'CSV файл не открыт!', $csv);
 			return false;
 		}
 
@@ -123,7 +112,7 @@ trait Parser{
 		$data = str_getcsv($str, ',');
 		if($data !== ['ID_No','Name','Sex','Fed','Clubnumber','ClubName','Birthday','Rtg_Nat','Fide_No','Rtg_Int']){
 			fclose($csv_stream);
-			$parse_error->add('csv_bad_head_format', 'CSV файл имеет не правильный заголовок', $data);
+			$parse_error->add('csv_error_head_format', 'CSV файл имеет не правильный заголовок', [$csv, $data]);
 			return false;
 		}
 				
@@ -158,12 +147,10 @@ trait Parser{
 		$time_statistic['csv_parsing_end'] = microtime(1);
 		$time_statistic['csv_parsing_time'] = $time_statistic['csv_parsing_end'] - $time_statistic['csv_parsing_start'];
 		
-		$parse_error->add('csv_parsing_complete', 'Парсинг завершен', array_merge($time_statistic, $statistic));
+		$parse_error->add('csv_parsing_success', 'Парсинг завершен', array_merge([$csv], $time_statistic, $statistic));
 		
 		return ['player' => $player_data_to_import, 'rating' => $rating_data_to_import];
 		
-		
-		//todo вставка рейтингов
 	}
 
 	/**
@@ -297,7 +284,7 @@ trait Parser{
 	/**
 	 * @param array $players - массив из player'ов see Parser::parse_csv
 	 * @see Parser::parse_csv
-	 * @param WP_Error $import_error - хранит ошибки импорта (db_import_players_failed, db_import_players_complete)
+	 * @param WP_Error $import_error - хранит ошибки импорта (db_import_players_error, db_import_players_success)
 	 * @param bool $update - будут ли обновляться уже добавленные игроки
 	 * @return true
 	 */
@@ -329,7 +316,7 @@ trait Parser{
 			}
 
 			if($wpdb->query($query) === false){
-				$import_error->add('db_import_players_failed', 'Не удалось добавить данные пользователей', [$query, $wpdb->last_error]);
+				$import_error->add('db_import_players_error', 'Не удалось добавить данные пользователей', [$query, $wpdb->last_error]);
 			}
 		}
 
@@ -339,7 +326,7 @@ trait Parser{
 		$statistic['players_now'] = $wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players`');
 		$statistic['players_added'] = $statistic['players_now'] - $statistic['players_was'];
 
-		$import_error->add('db_import_players_complete', 'Вставка игроков завершена', array_merge($time_statistic, $statistic));
+		$import_error->add('db_import_players_success', 'Вставка игроков завершена', array_merge($time_statistic, $statistic));
 
 		return true;
 	}
@@ -347,7 +334,7 @@ trait Parser{
 	/**
 	 * @param array $ratings - массив из rating'ов see Parser::parse_csv
 	 * @see Parser::parse_csv
-	 * @param WP_Error $import_error - хранит ошибки импорта (db_import_ratings_failed, db_import_ratings_complete)
+	 * @param WP_Error $import_error - хранит ошибки импорта (db_import_ratings_error, db_import_ratings_success)
 	 * @param int $rating_type - 0 - standard, 1 - rapid, 2 - blitz
 	 */
 	protected function db_import_ratings($ratings, $import_error, $rating_type=0){
@@ -372,7 +359,7 @@ trait Parser{
 				), -1)';
 			
 			if($wpdb->query($query) === false){
-				$import_error->add('db_import_ratings_failed', 'Не удалось добавить рейтинги', [$query, $wpdb->last_error]);
+				$import_error->add('db_import_ratings_error', 'Не удалось добавить рейтинги', [$query, $wpdb->last_error]);
 			}
 		}
 		
@@ -383,7 +370,7 @@ trait Parser{
 		$statistic['ratings_now'] = $wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players_ratings`');
 		$statistic['ratings_added'] = $statistic['ratings_now'] - $statistic['ratings_was'];
 
-		$import_error->add('db_import_ratings_complete', 'Вставка рейтингов завершена', array_merge($time_statistic, $statistic));
+		$import_error->add('db_import_ratings_success', 'Вставка рейтингов завершена', array_merge($time_statistic, $statistic));
 
 		return true;
 	}

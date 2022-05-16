@@ -13,6 +13,7 @@
 if(!defined('ABSPATH')) die();
 
 require_once 'functions.php';
+require_once 'log-class.php';
 require_once 'install-uninstall-trait.php';
 require_once 'parser-trait.php';
 require_once 'admin-page-trait.php';
