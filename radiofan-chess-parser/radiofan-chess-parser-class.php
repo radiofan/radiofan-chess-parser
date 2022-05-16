@@ -5,6 +5,7 @@ class ChessParser{
 	
 	use InstallUninstall;
 	use Parser;
+	use AdminPage;
 
 	/**
 	 * @var bool будет ли проводиться проверка etag перед скачиванием файлов
@@ -31,8 +32,18 @@ class ChessParser{
 
 		register_activation_hook($this->plugin_path, [$this, 'activate']);
 		register_deactivation_hook($this->plugin_path, [$this, 'deactivate']);
+		
+		add_action('radiofan_chess_parser_parse', [$this, 'parse_data']);
+		
+		add_action('admin_menu', [$this, 'add_admin_menu_item']);
+		add_action('admin_notices', [$this, 'view_notices']);
 
 		add_action('current_screen', [$this, 'test_download']);
+	}
+	
+	
+	public function parse_data(){
+		
 	}
 
 	/**

@@ -38,7 +38,25 @@ trait InstallUninstall{
 				KEY key_ratings_id_ruchess (id_ruchess)
 			) DEFAULT CHARACTER SET '.$wpdb->charset.' COLLATE '.$wpdb->collate.';';
 
-		dbDelta([$sql_rad_chess_players, $sql_rad_chess_players_ratings]);
+		//rad_chess_logs
+		$sql_rad_chess_logs =
+			'CREATE TABLE '.$wpdb->prefix.'rad_chess_logs (
+				log_time      timestamp           NOT NULL default CURRENT_TIMESTAMP,
+				content       mediumtext          NOT NULL,
+				type          tinytext            NOT NULL,
+				data          mediumtext          NOT NULL
+			) DEFAULT CHARACTER SET '.$wpdb->charset.' COLLATE '.$wpdb->collate.';';
+
+		dbDelta([$sql_rad_chess_players, $sql_rad_chess_players_ratings, $sql_rad_chess_logs]);
+		
+		
+		//создание cron задачи обновления
+		wp_unschedule_hook('radiofan_chess_parser_parse');
+		//первый запуск в 0:00 след. дня
+		$time = current_datetime();
+		$time = $time->setTime(0, 0);
+		$time = $time->add(new \DateInterval('P1D'));
+		wp_schedule_event($time->getTimestamp(), 'daily', 'radiofan_chess_parser_parse');
 
 		error_log('activate');//todo delme
 	}
@@ -48,7 +66,10 @@ trait InstallUninstall{
 			return;
 		$plugin = $_REQUEST['plugin'] ?? '';
 		check_admin_referer('deactivate-plugin_'.$plugin);
-
+		
+		//отключаем cron
+		wp_unschedule_hook('radiofan_chess_parser_parse');
+		
 		error_log('deactivate');//todo
 	}
 
