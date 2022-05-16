@@ -79,6 +79,14 @@ trait InstallUninstall{
 		
 		//отключаем cron
 		wp_unschedule_hook('radiofan_chess_parser_parse');
+
+		//удаляем опции парсинга
+		$types = [0 => 'standard', 1 => 'rapid', 2 => 'blitz'];
+		foreach($types as $type_id => $type){
+			delete_option('radiofan_chess_parser__etag_'.$type_id);
+			delete_option('radiofan_chess_parser__players_hash_'.$type_id);
+			delete_option('radiofan_chess_parser__ratings_hash_'.$type_id);
+		}
 		
 		error_log('deactivate');//todo
 	}
@@ -92,6 +100,16 @@ trait InstallUninstall{
 		
 		//удаляем таблицы
 		global $wpdb;
-		$wpdb->query('DROP TABLE '.$wpdb->prefix.'rad_chess_players_ratings, '.$wpdb->prefix.'rad_chess_players');
+		$wpdb->query('DROP TABLE '.$wpdb->prefix.'rad_chess_players_ratings, '.$wpdb->prefix.'rad_chess_players, '.$wpdb->prefix.'rad_chess_logs');
+		
+		//удаляем опции
+		delete_option('radiofan_chess_parser__import_filter');
+		delete_option('radiofan_chess_parser__players_update');
+		$types = [0 => 'standard', 1 => 'rapid', 2 => 'blitz'];
+		foreach($types as $type_id => $type){
+			delete_option('radiofan_chess_parser__etag_'.$type_id);
+			delete_option('radiofan_chess_parser__players_hash_'.$type_id);
+			delete_option('radiofan_chess_parser__ratings_hash_'.$type_id);
+		}
 	}
 }

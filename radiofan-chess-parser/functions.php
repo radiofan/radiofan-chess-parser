@@ -12,6 +12,6 @@ function user_import_filter(
 	string $region_name
 ){
 	$accept = true;
-	eval('$accept = ($region_number == 22);');//todo фильтр из админки
+	eval(get_option('radiofan_chess_parser__import_filter', ''));//todo фильтр из админки
 	return $accept;
 }

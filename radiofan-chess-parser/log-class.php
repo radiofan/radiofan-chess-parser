@@ -11,7 +11,7 @@ class rad_log{
 	public static function log($content, $type, $data){
 		global $wpdb;
 		$data = print_r($data, 1);
-		$wpdb->insert('rad_chess_logs', compact('content', 'type', 'data'), ['%s', '%s', '%s']);
+		$wpdb->insert($wpdb->prefix.'rad_chess_logs', compact('content', 'type', 'data'), ['%s', '%s', '%s']);
 	}
 
 	/**
