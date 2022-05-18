@@ -351,7 +351,7 @@ trait Parser{
 			
 			$query = '
 				INSERT INTO '.$wpdb->prefix.'rad_chess_players_ratings (`id_ruchess`, `rating_type`, `rating`)
-				SELECT '.$id.', '.$cur_rating_type.', '.$rating.'
+				SELECT '.$id.', '.$cur_rating_type.', '.$rating.' FROM dual
 				WHERE '.$rating.' != IFNULL((
 					SELECT `rating` FROM wp_rad_chess_players_ratings
 					WHERE `id_ruchess` = '.$id.' AND `rating_type` = '.$cur_rating_type.'
