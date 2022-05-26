@@ -37,8 +37,9 @@ class ChessParser{
 		
 		add_action('radiofan_chess_parser_parse', [$this, 'parse_data'], 10, 2);
 		
+		//add_action('current_screen', [$this, 'init_screen_admin_side']);
 		add_action('admin_menu', [$this, 'add_admin_menu_item']);
-		add_action('admin_notices', [$this, 'view_notices']);
+		//add_action('admin_notices', [$this, 'view_notices']);
 	}
 	
 	
