@@ -63,18 +63,20 @@ trait Parser{
 	 * @see unzip_file
 	 */
 	protected function unzip_file($zip, $dir_to){
-		//todo очистка папки
 		$time_statistic = ['unzip_file_start' => microtime(1)];
-		//инициализация функции распаковки
+		//инициализация файловой системы
 		if(!function_exists('unzip_file')){
 			require_once(ABSPATH.'wp-admin/includes/file.php');
 		}
+		/** @var \WP_Filesystem_Base $wp_filesystem */
 		global $wp_filesystem;
 		if(empty($wp_filesystem)){
 			WP_Filesystem();
 		}
 
 		$dir_to = str_replace(ABSPATH, $wp_filesystem->abspath(), $dir_to);
+		
+		$wp_filesystem->delete($dir_to, true);
 
 		$ret = unzip_file($zip, $dir_to);
 		

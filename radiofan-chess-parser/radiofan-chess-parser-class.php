@@ -15,12 +15,14 @@ class ChessParser{
 
 	/** @var string $plugin_path - путь к главному файлу */
 	protected $plugin_path;
-	/** @var string $plugin_dir - путь к папке плагина со слешем на конце*/
+	/** @var string $plugin_dir - путь к папке плагина со слешем на конце */
 	protected $plugin_dir;
 	/** @var string $plugin_dir_name - название папки плагина */
 	protected $plugin_dir_name;
 	/** @var string $plugin_url - url к папке плагина со слешем на конце */
 	protected $plugin_url;
+	
+	const GAME_TYPE = [0 => 'standard', 1 => 'rapid', 2 => 'blitz'];
 
 	public function __construct(string $plugin_path = __FILE__){
 

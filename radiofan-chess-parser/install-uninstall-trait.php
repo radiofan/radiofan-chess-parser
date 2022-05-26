@@ -58,13 +58,10 @@ trait InstallUninstall{
 		$time = $time->add(new \DateInterval('P1D'));
 		
 		//для каждого типа создадим свою cron задачу с интервалом в 10 мин
-		$types = [0 => 'standard', 1 => 'rapid', 2 => 'blitz'];
-		foreach($types as $type_id => $type){
+		foreach(self::GAME_TYPE as $type_id => $type){
 			wp_schedule_event($time->getTimestamp(), 'daily', 'radiofan_chess_parser_parse', [$type, $type_id]);
 			$time = $time->add(new \DateInterval('PT10M'));
 		}
-
-		error_log('activate');//todo delme
 	}
 
 	public function deactivate(){
@@ -81,14 +78,11 @@ trait InstallUninstall{
 		wp_unschedule_hook('radiofan_chess_parser_parse');
 
 		//удаляем опции парсинга
-		$types = [0 => 'standard', 1 => 'rapid', 2 => 'blitz'];
-		foreach($types as $type_id => $type){
+		foreach(self::GAME_TYPE as $type_id => $type){
 			delete_option('radiofan_chess_parser__etag_'.$type_id);
 			delete_option('radiofan_chess_parser__players_hash_'.$type_id);
 			delete_option('radiofan_chess_parser__ratings_hash_'.$type_id);
 		}
-		
-		error_log('deactivate');//todo
 	}
 
 	public static function uninstall(){
@@ -105,8 +99,7 @@ trait InstallUninstall{
 		//удаляем опции
 		delete_option('radiofan_chess_parser__import_filter');
 		delete_option('radiofan_chess_parser__players_update');
-		$types = [0 => 'standard', 1 => 'rapid', 2 => 'blitz'];
-		foreach($types as $type_id => $type){
+		foreach(self::GAME_TYPE as $type_id => $type){
 			delete_option('radiofan_chess_parser__etag_'.$type_id);
 			delete_option('radiofan_chess_parser__players_hash_'.$type_id);
 			delete_option('radiofan_chess_parser__ratings_hash_'.$type_id);
