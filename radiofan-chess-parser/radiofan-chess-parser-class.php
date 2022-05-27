@@ -1,6 +1,12 @@
 <?php
 namespace Radiofan\ChessParser;
 
+require_once 'functions.php';
+require_once 'log-class.php';
+require_once 'install-uninstall-trait.php';
+require_once 'parser-trait.php';
+require_once 'admin-page-trait.php';
+
 class ChessParser{
 	
 	use InstallUninstall;
@@ -39,7 +45,7 @@ class ChessParser{
 		
 		//add_action('current_screen', [$this, 'init_screen_admin_side']);
 		add_action('admin_menu', [$this, 'add_admin_menu_item']);
-		//add_action('admin_notices', [$this, 'view_notices']);
+		add_action('admin_init', [$this, 'settings_init']);
 	}
 	
 	

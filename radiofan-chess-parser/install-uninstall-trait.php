@@ -62,6 +62,10 @@ trait InstallUninstall{
 			wp_schedule_event($time->getTimestamp(), 'daily', 'radiofan_chess_parser_parse', [$type, $type_id]);
 			$time = $time->add(new \DateInterval('PT10M'));
 		}
+		
+		//создадим опции плагина
+		add_option('radiofan_chess_parser__import_filter', '', '', 'no');
+		add_option('radiofan_chess_parser__players_update', '', '', 'no');
 	}
 
 	public function deactivate(){

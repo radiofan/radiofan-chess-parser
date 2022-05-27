@@ -92,12 +92,90 @@ trait AdminPage{
 			wp_nonce_ays('');
 			return;
 		}
-		?>
-		<div class="wrap">
-			<h2><?= get_admin_page_title() ?></h2>
-		</div>
-		<?php
+		
+		echo '<div class="wrap">
+			<h2>'.get_admin_page_title().'</h2>';
 
+		settings_errors();
+		echo '<form method="POST" action="options.php">';
+		settings_fields('radiofan_chess_parser_fields');
+		do_settings_sections('radiofan_chess_parser__settings');
+		submit_button();
+		echo '</form>
+		</div>';
+		
+
+	}
+
+	public function settings_init(){
+		//Добавляем блок опций
+		add_settings_section(
+			'radiofan_chess_parser_section',
+			'',
+			'',
+			'radiofan_chess_parser__settings'
+		);
+
+		//Добавляем поля опций
+		add_settings_field(
+			'radiofan_chess_parser__import_filter',
+			'Фильтр игроков для их вставки (обновления) в БД',
+			function(){
+				echo '<span style="color:red;">ФИЛЬТР ЯВЛЯЕТСЯ ИСПОЛНЯЕМЫМ PHP КОДОМ!!! Вносить изменения только при полной уверенности</span><br>
+				Доступные переменные -
+				<ul>
+					<li><code>int $id_ruchess</code> - id игрока из системы ruchess</li>
+					<li><code>null|int $id_fide</code> - id игрока из системы fide</li>
+					<li><code>string $name</code> - ФИО игрока</li>
+					<li><code>bool $sex</code> - пол игрока (0 - м, 1 - ж)</li>
+					<li><code>string $country</code> - код страны</li>
+					<li><code>null|int $birth_year</code> - год рождения</li>
+					<li><code>int $region_number</code> - номер региона</li>
+					<li><code>int $region_name</code> - наименование региона</li>
+				</ul>
+				Код должен <span style="color:red;">возращать bool</span> (или присваивать перемнной $accept), true - игрок подходит<br>
+				<textarea
+					name="radiofan_chess_parser__import_filter"
+					id="radiofan_chess_parser__import_filter"
+					readonly="readonly"
+					cols="100"
+					rows="10"
+					style="font-family:\'courier new\', monospace;"
+				>'.esc_html(get_option('radiofan_chess_parser__import_filter', '')).'</textarea>';
+			},
+			'radiofan_chess_parser__settings',
+			'radiofan_chess_parser_section'
+		);
+		add_settings_field(
+			'radiofan_chess_parser__players_update',
+			'Обноволение игроков',
+			function(){
+				echo '<input
+					type="checkbox"
+					name="radiofan_chess_parser__players_update"
+					id="radiofan_chess_parser__players_update"
+					value="1"';
+				checked(get_option('radiofan_chess_parser__players_update',false));
+				echo '>';
+			},
+			'radiofan_chess_parser__settings',
+			'radiofan_chess_parser_section'
+		);
+
+		//Регистрируем опции по умолчанию 0, и функция валидации чисел
+		register_setting('radiofan_chess_parser_fields', 'radiofan_chess_parser__import_filter');
+		register_setting(
+			'radiofan_chess_parser_fields',
+			'radiofan_chess_parser__players_update',
+			[
+				'type' => 'bool',
+				'sanitize_callback' => function($val){
+					return !!$val;
+				},
+				'show_in_rest' => false,
+				'default' => false
+			]
+		);
 	}
 
 	/**
