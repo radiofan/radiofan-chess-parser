@@ -2,6 +2,9 @@
 namespace Radiofan\ChessParser;
 
 trait AdminPage{
+	/** @var null|PlayersTable $PlayersTable */
+	private $PlayersTable = null;
+	
 	/**
 	 * добавляет разделы меню связанные с парсером
 	 * Данные игроков
@@ -30,12 +33,9 @@ trait AdminPage{
 
 		if($hook !== false){
 			wp_add_inline_style('admin-menu', '#toplevel_page_radiofan_chess_parser .wp-menu-image:before {content: "\\265E";}');
+
+			add_action('load-'.$hook, [$this, 'init_players_page']);
 		}
-		/*
-		add_action("load-$hook", 'radС_edit_create_course');
-		//add_action("load-$hook", 'radС_import_export_excel');
-		add_action("load-$hook", 'radС_price_table_load');
-		*/
 		
 		add_submenu_page(
 			'radiofan_chess_parser',
@@ -59,17 +59,6 @@ trait AdminPage{
 	}
 
 	/**
-	 * провизводит действия до загрузки страницы логов
-	 */
-	public function init_logs_page(){
-		//подключаем скрипты и стили спойлера
-		wp_add_inline_style('admin-menu', '.spoiler-wrap{border:1px solid #c3c4c7;margin:.5em 0;} .spoiler-head{padding:3px;cursor:pointer;} .folded:before{content:"+";margin-right:5px;} .unfolded:before{content:"–";margin-right:5px;} .spoiler-body{display:none;padding:3px;border-top:1px solid #c3c4c7;background-color:background:rgba(0,0,0,.07);}');
-		wp_add_inline_script('jquery', 'jQuery(document).ready(function($){$(".spoiler-head").click(function(e){$(this).toggleClass("folded").toggleClass("unfolded").next().toggle();});});');
-		
-		$this->action_clear_logs();
-	}
-
-	/**
 	 * вывод страницы с таблицей игроков
 	 */
 	public function view_players_page(){
@@ -79,9 +68,18 @@ trait AdminPage{
 		}
 		?>
 		<div class="wrap">
-			<h2><?= get_admin_page_title() ?></h2>
+			<h2><?= get_admin_page_title(); ?></h2>
+			<hr>
+			<form action="" method="POST">
+				<?php $this->PlayersTable->display(); ?>
+			</form>
 		</div>
 		<?php
+	}
+
+	public function init_players_page(){
+		require_once 'players-table-class.php';
+		$this->PlayersTable = new PlayersTable();
 	}
 
 	/**
@@ -107,6 +105,9 @@ trait AdminPage{
 
 	}
 
+	/**
+	 * инициализурует секции настроек плагина
+	 */
 	public function settings_init(){
 		//Добавляем блок опций
 		add_settings_section(
@@ -186,7 +187,7 @@ trait AdminPage{
 			wp_nonce_ays('');
 			return;
 		}
-		
+
 		echo '<div class="wrap">
 			<a href="?page=radiofan_chess_parser__logs&action=radiofan_chess_parser__clear_logs&_wpnonce='.wp_create_nonce('radiofan_chess_parser__clear_logs').'" class="page-title-action">Очистить логи</a>
 			<h1 class="wp-heading-inline">'.get_admin_page_title().'</h1>
@@ -206,6 +207,17 @@ trait AdminPage{
 			</div>';
 		}
 		echo '</div>';
+	}
+
+	/**
+	 * провизводит действия до загрузки страницы логов
+	 */
+	public function init_logs_page(){
+		//подключаем скрипты и стили спойлера
+		wp_add_inline_style('admin-menu', '.spoiler-wrap{border:1px solid #c3c4c7;margin:.5em 0;} .spoiler-head{padding:3px;cursor:pointer;} .folded:before{content:"+";margin-right:5px;} .unfolded:before{content:"–";margin-right:5px;} .spoiler-body{display:none;padding:3px;border-top:1px solid #c3c4c7;background-color:background:rgba(0,0,0,.07);}');
+		wp_add_inline_script('jquery', 'jQuery(document).ready(function($){$(".spoiler-head").click(function(e){$(this).toggleClass("folded").toggleClass("unfolded").next().toggle();});});');
+
+		$this->action_clear_logs();
 	}
 
 	/**

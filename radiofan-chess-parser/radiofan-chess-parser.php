@@ -3,7 +3,7 @@
  * @wordpress-plugin
  * Plugin Name: RADIOFAN Chess Parser
  * Plugin URI: https://github.com/radiofan
- * Version: 0.1
+ * Version: 0.2
  * Author: RADIOFAN
  * Author URI: http://vk.com/radio_fan
  * Description: todo add desc

@@ -46,6 +46,11 @@ class ChessParser{
 		//add_action('current_screen', [$this, 'init_screen_admin_side']);
 		add_action('admin_menu', [$this, 'add_admin_menu_item']);
 		add_action('admin_init', [$this, 'settings_init']);
+
+		//Пользовательские настройки пагинации в таблице игроков
+		add_filter('set-screen-option', function($status, $option, $value){
+			return ($option == 'radiofan_chess_parser__players_per_page') ? absint($value) : $status;
+		}, 10, 3 );
 	}
 	
 	
