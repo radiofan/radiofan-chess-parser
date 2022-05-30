@@ -59,6 +59,10 @@
 	width:100%;
 }
 
+.chess-section__header h6{
+	margin-bottom:0;
+}
+
 .chess-section__header .tab.active, .chess-section__header .tab:hover{
 	color:#fefefe;
 	fill:#fefefe;
@@ -74,6 +78,38 @@
 	display:block;
 	padding:10px 15px;
 	background-color:#334580;
-	color:#909090;
+	color:#fefefe;
 	font-size:1rem;
+}
+.chess-top-block .top__other:hover {
+	color: #909090;
+}
+
+.chess-top-block table{
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.chess-top-block a{
+	color:#fefefe;
+}
+
+.chess-top-block a:hover{
+	color:#fefefe;
+}
+
+.chess-top-block table tr{
+	border-bottom:rgba(255,255,255,0.15) 1px solid;
+}
+
+.chess-top-block table tr:hover{
+	background-color:rgba(255,255,255,0.15);
+}
+
+.chess-top-block table tr:first-child{
+	border-top:rgba(255,255,255,0.15) 1px solid;
+}
+
+.chess-top-block table tr td:first-child{
+	padding:2px 5px;
 }

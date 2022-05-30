@@ -34,22 +34,20 @@ trait View{
 		];
 		
 		$svg_path = $this->plugin_url.'assets/sprites.svg';
-		$ret =  '
-<div class="tourn-top__top col-lg-4 col-md-12">
-	<h3>Топ Алтайского края</h3>
+		$ret = '
 	<div class="chess-top-block">
 		<div class="chess-top-block__header tab-header">
 			<div class="tab tab-man-ruchess active" data-box="man-ruchess">
-				<h5>Мужчины (ruchess)</h5>
+				<h5>Мужчины <sub>(ruchess)</sub></h5>
 			</div>
 			<div class="tab tab-woman-ruchess" data-box="woman-ruchess">
-				<h5>Женщины (ruchess)</h5>
+				<h5>Женщины <sub>(ruchess)</sub></h5>
 			</div>
 			<div class="tab tab-man-fide" data-box="man-fide">
-				<h5>Мужчины (fide)</h5>
+				<h5>Мужчины <sub>(fide)</sub></h5>
 			</div>
 			<div class="tab tab-woman-fide" data-box="woman-fide">
-				<h5>Женщины (fide)</h5>
+				<h5>Женщины <sub>(fide)</sub></h5>
 			</div>
 		</div>
 		<div class="chess-top-block__content tab-content">
@@ -98,7 +96,6 @@ trait View{
 		</div>
 		<a href="/chess-players/rating/" class="top__other">Рейтинг-лист Алтайского края</a>
 	</div>
-</div>
 ';
 		return $ret;
 	}
