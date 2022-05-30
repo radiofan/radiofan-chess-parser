@@ -1,0 +1,79 @@
+.chess-top-block{
+	width:100%;
+}
+
+.chess-top-block__header{
+	overflow:hidden;
+	display:flex;
+	grid-gap:5px;
+}
+
+.chess-top-block .tab{
+	cursor:pointer;
+	text-align:center;
+}
+
+.chess-top-block__header .tab{
+	color:#eee;
+	padding:8px;
+	border-radius:5px 5px 0 0;
+	background-color:#868cad;
+	font-size:14px;
+	text-transform:none;
+	transition:background-color .2s ease-in-out;
+	-webkit-animation:background-color .2s ease-in-out;
+}
+
+.chess-top-block__header .tab.active, .chess-top-block__header .tab:hover{
+	background-color:#334580;
+	color:#fefefe;
+}
+
+.chess-top-block__content{
+	padding:2px 8px;
+	background:#334580;
+	color:#fefefe;
+	box-sizing:border-box;
+}
+
+.chess-top-block .box{
+	display:none;
+}
+
+.chess-top-block .box.active{
+	display:block;
+}
+
+.chess-section__header{
+	display:flex;
+	justify-content:space-around;
+}
+
+.chess-section__header .tab{
+	color:#909090;
+	fill:#909090;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	margin:8px 0;
+	width:100%;
+}
+
+.chess-section__header .tab.active, .chess-section__header .tab:hover{
+	color:#fefefe;
+	fill:#fefefe;
+}
+
+.chess-top-block .svg-icon{
+	height:16px;
+	width:16px;
+	margin-right:8px;
+}
+
+.chess-top-block .top__other{
+	display:block;
+	padding:10px 15px;
+	background-color:#334580;
+	color:#909090;
+	font-size:1rem;
+}

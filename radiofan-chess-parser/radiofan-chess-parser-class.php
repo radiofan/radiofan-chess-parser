@@ -6,12 +6,14 @@ require_once 'log-class.php';
 require_once 'install-uninstall-trait.php';
 require_once 'parser-trait.php';
 require_once 'admin-page-trait.php';
+require_once 'view-trait.php';
 
 class ChessParser{
 	
 	use InstallUninstall;
 	use Parser;
 	use AdminPage;
+	use View;
 
 	/**
 	 * @var bool будет ли проводиться проверка etag перед скачиванием файлов
@@ -51,6 +53,9 @@ class ChessParser{
 		add_filter('set-screen-option', function($status, $option, $value){
 			return ($option == 'radiofan_chess_parser__players_per_page') ? absint($value) : $status;
 		}, 10, 3 );
+
+		add_shortcode('chess_top_scoreboard', [$this, 'view_top_scoreboard']);
+		add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
 	}
 	
 	
