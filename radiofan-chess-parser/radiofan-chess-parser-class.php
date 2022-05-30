@@ -20,6 +20,7 @@ class ChessParser{
 	 * @see https://developer.mozilla.org/ru/docs/Web/HTTP/Headers/ETag
 	 */
 	const CHECK_ETAG = true;
+	const RUCHESS_HREF = 'https://ratings.ruchess.ru/people/';
 
 	/** @var string $plugin_path - путь к главному файлу */
 	protected $plugin_path;
@@ -57,8 +58,11 @@ class ChessParser{
 		add_shortcode('chess_top_scoreboard', [$this, 'view_top_scoreboard']);
 		add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
 	}
-	
-	
+
+	/**
+	 * @param string $type - тип из GAME_TYPE
+	 * @param int $type_id - тип из GAME_TYPE
+	 */
 	public function parse_data($type, $type_id){
 		//скачивание файла
 		$etag = (self::CHECK_ETAG) ? get_option('radiofan_chess_parser__etag_'.$type_id, '') : null;
@@ -123,6 +127,8 @@ class ChessParser{
 			rad_log::log_wp_error($wp_error);
 			if(!$wp_error->get_error_messages('db_import_ratings_error')){
 				update_option('radiofan_chess_parser__ratings_hash_'.$type_id, $data_ratings_hash, false);
+				$this->update_top($type_id);//рейтинг ruchess
+				$this->update_top($type_id+1);//рейтинг fide
 			}
 		}else{
 			rad_log::log('Рейтинги '.$type.' не требуют обновления', 'info', 'radiofan_chess_parser__ratings_hash_'.$type_id.' = '.$data_ratings_hash);
