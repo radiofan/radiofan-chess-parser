@@ -13,7 +13,7 @@ trait View{
 	/**
 	 * Выводит данные шорткода [chess_top_scoreboard]
 	 * А именно блок с топом игроков
-	 * @param array $atts
+	 * @param array $atts - ['list_url' => string]
 	 * @param string $content
 	 * @return string
 	 */
@@ -21,6 +21,8 @@ trait View{
 		
 		wp_enqueue_script('radiofan_chess_parser___script_top_scoreboard');
 		wp_enqueue_style('radiofan_chess_parser__style_top_scoreboard');
+
+		$atts = shortcode_atts(['list_url' => ''], $atts);
 		
 		$data = [
 			'man-ruchess' => [
@@ -104,9 +106,8 @@ trait View{
 			$first = 0;
 		}
 		
-		$ret .='
+		$ret .= ($atts['list_url'] ? '<a href="'.trim(esc_html($atts['list_url'])).'" class="top__other">Рейтинг-лист Алтайского края</a>' : '').'
 		</div>
-		<a href="/chess-players/rating/" class="top__other">Рейтинг-лист Алтайского края</a>
 	</div>
 ';
 		return $ret;

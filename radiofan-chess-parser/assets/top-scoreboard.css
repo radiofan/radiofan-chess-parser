@@ -30,7 +30,7 @@
 }
 
 .chess-top-block__content{
-	padding:2px 8px;
+	padding:8px;
 	background:#334580;
 	color:#fefefe;
 	box-sizing:border-box;
@@ -75,8 +75,7 @@
 }
 
 .chess-top-block .top__other{
-	display:block;
-	padding:10px 15px;
+	margin:10px 15px;
 	background-color:#334580;
 	color:#fefefe;
 	font-size:1rem;

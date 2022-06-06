@@ -6,7 +6,7 @@
  * Version: 0.3
  * Author: RADIOFAN
  * Author URI: http://vk.com/radio_fan
- * Description: todo add desc
+ * Description: шорткод <code>[chess_top_scoreboard list_url=""]</code> выводит актуальный блок топа игроков, атрибут list_url может содержать ссылку на список всех игроков
  * Requires PHP: 7.0
  * Requires at least: 4.7
 */
