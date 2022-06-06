@@ -2,13 +2,25 @@
 namespace Radiofan\ChessParser;
 
 trait View{
-
+	/**
+	 * регистрирует скрипты и стили для работы шорткода [chess_top_scoreboard]
+	 */
 	public function enqueue_scripts(){
-		wp_enqueue_script('radiofan_chess_parser___script_top_scoreboard', $this->plugin_url.'assets/top-scoreboard.js', ['jquery'], filemtime($this->plugin_dir.'assets/top-scoreboard.js'), 1);
-		wp_enqueue_style('radiofan_chess_parser__style_top_scoreboard', $this->plugin_url.'assets/top-scoreboard.css', false, filemtime($this->plugin_dir.'assets/top-scoreboard.css'));
+		wp_register_script('radiofan_chess_parser___script_top_scoreboard', $this->plugin_url.'assets/top-scoreboard.js', ['jquery'], filemtime($this->plugin_dir.'assets/top-scoreboard.js'), 1);
+		wp_register_style('radiofan_chess_parser__style_top_scoreboard', $this->plugin_url.'assets/top-scoreboard.css', false, filemtime($this->plugin_dir.'assets/top-scoreboard.css'));
 	}
-	
+
+	/**
+	 * Выводит данные шорткода [chess_top_scoreboard]
+	 * А именно блок с топом игроков
+	 * @param array $atts
+	 * @param string $content
+	 * @return string
+	 */
 	public function view_top_scoreboard($atts, $content){
+		
+		wp_enqueue_script('radiofan_chess_parser___script_top_scoreboard');
+		wp_enqueue_style('radiofan_chess_parser__style_top_scoreboard');
 		
 		$data = [
 			'man-ruchess' => [
@@ -101,6 +113,8 @@ trait View{
 	}
 
 	/**
+	 * обновляет топ игроков для данного типа игроков
+	 * @see View::save_top()
 	 * @param int $rating_type - тип рейтинга из таблицы rad_chess_players_ratings
 	 */
 	protected function update_top($rating_type){
@@ -126,8 +140,10 @@ trait View{
 				continue;
 			$curr_id = $tmp['id_ruchess'];
 			if($tmp['sex']){//woman
+				unset($tmp['sex']);
 				$woman_top->add($tmp);
 			}else{//man
+				unset($tmp['sex']);
 				$man_top->add($tmp);
 			}
 		}
@@ -136,6 +152,18 @@ trait View{
 		$this->save_top($woman_top->get_top_desc(), 'woman', $rating_type);
 	}
 
+	/**
+	 * топ сохраняется в опцию 'radiofan_chess_parser__top_'.['man'|'woman'].'_'.$rating_type
+	 * топ имеет структуру
+	 * [
+	 * 		['id_ruchess' => int, 'id_fide' => null|int, 'rating' => int, 'name' => string],
+	 * 		...
+	 * ] - длина не больше 10 элементов
+	 * @param array $top - массив массивов ['id_ruchess' => int|numeric-string, 'rating' => int|numeric-string]
+	 * @param string $sex_type - 'man' | 'woman'
+	 * @param int $rating_type - тип рейтинга из таблицы rad_chess_players_ratings
+	 * @return bool
+	 */
 	protected function save_top($top, $sex_type, $rating_type){
 		global $wpdb;
 		$query_str = '';
@@ -143,7 +171,9 @@ trait View{
 		if(!$len)
 			return false;
 		for($i = 0; $i < $len; $i++){
-			$query_str .= absint($top[$i]['id_ruchess']).', ';
+			$top[$i]['id_ruchess'] = absint($top[$i]['id_ruchess']);
+			$top[$i]['rating'] = absint($top[$i]['rating']);
+			$query_str .= $top[$i]['id_ruchess'].', ';
 		}
 		$query_str = mb_substr($query_str, 0, -2);
 		$data = $wpdb->get_results('SELECT `id_ruchess`, `id_fide`, `name` FROM `'.$wpdb->prefix.'rad_chess_players` WHERE `id_ruchess` IN('.$query_str.')', ARRAY_A);
@@ -155,6 +185,7 @@ trait View{
 		}
 		for($i = 0; $i < $len; $i++){
 			$top[$i] = array_merge($top[$i], $players_data[$top[$i]['id_ruchess']]);
+			$top[$i]['id_fide'] = is_null($top[$i]['id_fide']) ?: absint($top[$i]['id_fide']);
 		}
 		
 		update_option('radiofan_chess_parser__top_'.$sex_type.'_'.$rating_type, $top, false);
@@ -162,6 +193,10 @@ trait View{
 	}
 }
 
+/**
+ * Class TopList - при добавлении новых элементов формирует топ
+ * @package Radiofan\ChessParser
+ */
 class TopList{
 	
 	private $max_top;
@@ -180,6 +215,10 @@ class TopList{
 		$this->comparator = is_callable($comparator) ? $comparator : false;
 	}
 
+	/**
+	 * @param mixed $elem - добавляемый элемент, будет сравниваться с помощью $this->$comparator или через операторы сравнения
+	 * @return bool был ли добавлен элемент
+	 */
 	public function add($elem){
 		$len = sizeof($this->container);
 		$i=0;
@@ -201,14 +240,28 @@ class TopList{
 		return true;
 	}
 
+	/**
+	 * возвращает массив добавленных элементов, от большего к меньшему
+	 * @return array
+	 */
 	public function get_top_desc(){
 		return array_reverse($this->container);
 	}
 
+	/**
+	 * возвращает массив добавленных элементов, от меньшего к большему
+	 * @return array
+	 */
 	public function get_top_asc(){
 		return $this->container;
 	}
-	
+
+	/**
+	 * комапаратор для топа игроков по рейтингам
+	 * @param array $addable - должен содеражать ключ 'rating'
+	 * @param array $added - должен содеражать ключ 'rating'
+	 * @return int $addable < $added = -1, $addable == $added = 0, $addable > $added = 1
+	 */
 	public static function compare_ratings($addable, $added){
 		return $addable['rating'] < $added['rating'] ? -1 : ($addable['rating'] == $added['rating'] ? 0 : 1);
 	}
