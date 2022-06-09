@@ -21,6 +21,7 @@ class ChessParser{
 	 */
 	const CHECK_ETAG = true;
 	const RUCHESS_HREF = 'https://ratings.ruchess.ru/people/';
+	const FIDE_HREF = 'https://ratings.fide.com/profile/';
 
 	/** @var string $plugin_path - путь к главному файлу */
 	protected $plugin_path;
@@ -56,6 +57,7 @@ class ChessParser{
 		}, 10, 3 );
 
 		add_shortcode('chess_top_scoreboard', [$this, 'view_top_scoreboard']);
+		add_shortcode('chess_players_page', [$this, 'view_players_page_table']);
 		add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
 	}
 

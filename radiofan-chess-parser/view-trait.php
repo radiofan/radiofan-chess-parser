@@ -52,10 +52,10 @@ trait View{
 	<div class="chess-top-block">
 		<div class="chess-top-block__header tab-header">
 			<div class="tab tab-man-ruchess active" data-box="man-ruchess">
-				<h5>Мужчины <sub>(ruchess)</sub></h5>
+				<h5>Мужчины <sub>(фшр)</sub></h5>
 			</div>
 			<div class="tab tab-woman-ruchess" data-box="woman-ruchess">
-				<h5>Женщины <sub>(ruchess)</sub></h5>
+				<h5>Женщины <sub>(фшр)</sub></h5>
 			</div>
 			<div class="tab tab-man-fide" data-box="man-fide">
 				<h5>Мужчины <sub>(fide)</sub></h5>
@@ -111,6 +111,255 @@ trait View{
 	</div>
 ';
 		return $ret;
+	}
+
+	public function view_players_page_table($atts, $content){
+		global $wpdb;
+		
+		$player_sex = isset($_GET['sex']) ? $_GET['sex'] : 'all';
+		$search_value = isset($_GET['q']) ? $_GET['q'] : false;
+		$query = '';
+		//выборка типов пользователя
+		switch($player_sex){
+			case 'm':
+			case 'male':
+			case 'man':
+			case 'м':
+			case 'муж':
+				$player_sex = 'male';
+				$query = ' WHERE `sex` = 0';
+				break;
+			case 'f':
+			case 'w':
+			case 'female':
+			case 'woman':
+			case 'ж':
+			case 'жен':
+				$player_sex = 'female';
+				$query = ' WHERE `sex` = 1';
+				break;
+			case 'all':
+			default:
+				$player_sex = 'all';
+				break;
+		}
+		//поиск в выборке
+		if($search_value){
+			$query .= ($query ? ' AND' : ' WHERE');
+			$like_search_value = '%'.$wpdb->esc_like($search_value).'%';
+			$query .= $wpdb->prepare(' (`id_ruchess` LIKE %s OR `id_fide` LIKE %s OR `name` LIKE %s OR `birth_year` LIKE %s)', $like_search_value, $like_search_value, $like_search_value, $like_search_value);
+		}
+		//пагинация по выборке
+		$players_c = absint($wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players`'.$query));
+		$elem_per_page = isset($_GET['per_page']) ? absint($_GET['per_page']) : 50;
+		if($elem_per_page < 5){
+			$elem_per_page = 5;
+		}
+		if($elem_per_page > 300){
+			$elem_per_page = 300;
+		}
+
+		$max_page = (int)($players_c / $elem_per_page);
+		if($max_page == 0 || $players_c % $elem_per_page)
+			$max_page += 1;
+
+		$curr_page = isset($_GET['page']) ? absint($_GET['page']) : 1;
+		if($curr_page < 1)
+			$curr_page = 1;
+		if($curr_page > $max_page)
+			$curr_page = $max_page;
+
+		//возвращаемое значение
+		$ret = array(
+			'elements_count' => num_decline($players_c, 'игрок', 'игрока', 'игроков'),
+			'curr_page' => $curr_page,
+			'curr_page+1' => $curr_page+1,
+			'curr_page-1' => $curr_page-1,
+			'max_page' => $max_page,
+			'player_sex' => $player_sex,
+			'players_type_links' => '
+<a href="?sex=all" class="list-group-item list-group-item-action'.($player_sex == 'all' ? ' active' : '').'">Все</a>
+<a href="?sex=m" class="list-group-item list-group-item-action'.($player_sex == 'male' ? ' active' : '').'">Мужчины</a>
+<a href="?sex=f" class="list-group-item list-group-item-action'.($player_sex == 'female' ? ' active' : '').'">Женщины</a>',
+			'players_list' => '',
+			'search_value_url' => $search_value ? '&q='.urlencode($search_value) : '',
+			'search_value' => esc_attr($search_value)
+		);
+
+		//генерация таблицы
+		$players_res = $wpdb->get_results(
+			'SELECT `id_ruchess`, `id_fide`, `name`, `sex`, `birth_year`
+FROM `'.$wpdb->prefix.'rad_chess_players`
+'.$query.$wpdb->prepare(' LIMIT %d OFFSET %d', $elem_per_page, ($curr_page-1)*$elem_per_page), ARRAY_A);
+		
+		$players = [];
+		
+		$len = sizeof($players_res);
+		for($i=0; $i<$len; $i++){
+			$players[$players_res[$i]['id_ruchess']] = $players_res[$i];
+			unset($players_res[$i]);
+		}
+		$ratings = $this->get_players_ratings(array_keys($players));
+		
+		foreach($players as $id_ruchess => $data){
+			$id = $data['id_ruchess'];
+			$ret['players_list'] .= '
+<tr>
+	<td class="td-text td-id_ruchess"><a href="'.self::RUCHESS_HREF.$id.'">'.$id.'</a></td>
+	<td class="td-text td-id_fide">'.($data['id_fide'] ? '<a href="'.self::FIDE_HREF.$data['id_fide'].'">'.$data['id_fide'].'</a>' : '').'</td>
+	<td class="td-text td-name">'.esc_html($data['name']).'</td>
+	<td class="td-text td-sex">'.($data['sex'] ? 'ж' : 'м').'</td>
+	<td class="td-text td-birth_year">'.$data['birth_year'].'</td>';
+			
+			foreach(self::GAME_TYPE as $type_id => $type){
+				foreach([1 => 'ruchess', 2 => 'fide'] as $platform_id => $platform){
+					$r_id = $type_id*2+$platform_id;
+					$ret['players_list'] .= '<td class="td-text td-'.$type.'-'.$platform.' td-type-'.$r_id.'">';
+					$len = isset($ratings[$id][$r_id]) ? sizeof($ratings[$id][$r_id]) : 0;
+					for($i=0; $i<$len; $i++){
+						if($i == 2){
+							$ret['players_list'] .= '<div class="spoiler-wrap"><div class="spoiler-head folded">Доп. данные</div><div class="spoiler-body">';
+						}
+						$ret['players_list'] .= '<p><code>'.$ratings[$id][$r_id][$i]['update_date'].'</code>:&nbsp;&nbsp;&nbsp;&nbsp;'.$ratings[$id][$r_id][$i]['rating'].'</p>';
+					}
+					if($len > 2){
+						$ret['players_list'] .= '</div></div>';
+					}
+					$ret['players_list'] .= '</td>';
+				}
+			}
+			$ret['players_list'] .= '</tr>';
+		}
+		
+		
+		$ret = '<div class="users-table">
+					<div class="list-group list-group-horizontal float-left">
+						'.$ret['players_type_links'].'
+					</div>
+					<form method="get" data-not-ajax="true">
+						<div class="float-right">
+							<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
+							<input type="search" class="form-control" name="q" value="'.$ret['search_value'].'" autocomplete="off" placeholder="Поиск" style="display:inline-block;width:calc(100% - 70px)">
+							<input type="submit" class="btn btn-primary" value="Поиск" style="display:inline-block;width:64px;">
+						</div>
+					</form>
+					<br class="clear">
+					<div class="table-nav">
+						<div class="table-nav-pages float-right">
+							<span class="displaying-num">'.$ret['elements_count'].'</span>
+							<span class="pagination-links">
+								<a class="btn btn-primary" href="?page=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
+								<a class="btn btn-primary" href="?page='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
+								<span class="paging-input">
+									<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
+									<input type="hidden" name="q" value="'.$ret['search_value'].'">
+									<span><span class="curr-pages">&nbsp;'.$ret['curr_page'].'</span> &nbsp;of&nbsp; <span class="total-pages">'.$ret['max_page'].'&nbsp;</span></span>
+								</span>
+								<a class="btn btn-primary" href="?page='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
+								<a class="btn btn-primary" href="?page='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
+							</span>
+						</div>
+						<br class="clear">
+					</div>
+					<hr>
+					<table class="table table-striped table-bordered admin-table">
+						<thead>
+							<tr>
+								<th class="td-text" rowspan="3">ФШР ID</th>
+								<th class="td-text" rowspan="3">FIDE ID</th>
+								<th class="td-text" rowspan="3">ФИО</th>
+								<th class="td-text" rowspan="3">Пол</th>
+								<th class="td-text" rowspan="3">Год рождения</th>
+								<th class="td-text" colspan="6">Рейтинг</th>
+							</tr>
+							<tr>
+								<th class="td-text" colspan="2">Классика</th>
+								<th class="td-text" colspan="2">Рапид</th>
+								<th class="td-text" colspan="2">Блиц</th>
+							</tr>
+							<tr>
+								<th class="td-text">ФШР</th>
+								<th class="td-text">FIDE</th>
+								<th class="td-text">ФШР</th>
+								<th class="td-text">FIDE</th>
+								<th class="td-text">ФШР</th>
+								<th class="td-text">FIDE</th>
+							</tr>
+						</thead>
+						<tbody>
+						'.$ret['players_list'].'
+						</tbody>
+						<thead>
+							<tr>
+								<th class="td-text" rowspan="3">ФШР ID</th>
+								<th class="td-text" rowspan="3">FIDE ID</th>
+								<th class="td-text" rowspan="3">ФИО</th>
+								<th class="td-text" rowspan="3">Пол</th>
+								<th class="td-text" rowspan="3">Год рождения</th>
+								<th class="td-text">ФШР</th>
+								<th class="td-text">FIDE</th>
+								<th class="td-text">ФШР</th>
+								<th class="td-text">FIDE</th>
+								<th class="td-text">ФШР</th>
+								<th class="td-text">FIDE</th>
+							</tr>
+							<tr>
+								<th class="td-text" colspan="2">Классика</th>
+								<th class="td-text" colspan="2">Рапид</th>
+								<th class="td-text" colspan="2">Блиц</th>
+							</tr>
+							<tr>
+								<th class="td-text" colspan="6">Рейтинг</th>
+							</tr>
+						</thead>
+					</table>
+					<hr>
+					<div class="table-nav">
+						<div class="table-nav-pages float-right">
+							<span class="displaying-num">'.$ret['elements_count'].'</span>
+							<span class="pagination-links">
+								<a class="btn btn-primary" href="?page=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
+								<a class="btn btn-primary" href="?page='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
+								<span class="paging-input">
+									<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
+									<input type="hidden" name="q" value="'.$ret['search_value'].'">
+									<span><span class="curr-pages">&nbsp;'.$ret['curr_page'].'</span> &nbsp;of&nbsp; <span class="total-pages">'.$ret['max_page'].'&nbsp;</span></span>
+								</span>
+								<a class="btn btn-primary" href="?page='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
+								<a class="btn btn-primary" href="?page='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
+							</span>
+						</div>
+						<br class="clear">
+					</div>
+				</div>';
+		
+		return $ret;
+	}
+
+	/**
+	 * передавать только массив чисел, данные перед запросом не обрабатываются!!!
+	 * @param int[] $players_id
+	 * @return array
+	 */
+	protected function get_players_ratings($players_id = []){
+		global $wpdb; 
+		$query = implode(', ', $players_id);
+		$ret = $wpdb->get_results('SELECT `id_ruchess`, `rating_type`, `rating`, `update_date` FROM `'.$wpdb->prefix.'rad_chess_players_ratings` WHERE `id_ruchess` IN('.$query.') ORDER BY `update_date` DESC', ARRAY_A);
+		$ratings = [];
+		$len = sizeof($ret);
+		for($i=0; $i<$len; $i++){
+			$id = $ret[$i]['id_ruchess'];
+			$r_type = $ret[$i]['rating_type'];
+			if(!isset($ratings[$id]))
+				$ratings[$id] = [];
+			if(!isset($ratings[$id][$r_type]))
+				$ratings[$id][$r_type] = [];
+			$ratings[$id][$r_type][] = ['rating' => $ret[$i]['rating'], 'update_date' => $ret[$i]['update_date']];
+			
+			unset($ret[$i]);
+		}
+		
+		return $ratings;
 	}
 
 	/**
