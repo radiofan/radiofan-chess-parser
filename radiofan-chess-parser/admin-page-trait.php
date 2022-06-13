@@ -214,7 +214,7 @@ trait AdminPage{
 	 */
 	public function init_logs_page(){
 		//подключаем скрипты и стили спойлера
-		wp_add_inline_style('admin-menu', '.spoiler-wrap{border:1px solid #c3c4c7;margin:.5em 0;} .spoiler-head{padding:3px;cursor:pointer;} .folded:before{content:"+";margin-right:5px;} .unfolded:before{content:"–";margin-right:5px;} .spoiler-body{display:none;padding:3px;border-top:1px solid #c3c4c7;background-color:background:rgba(0,0,0,.07);}');
+		wp_add_inline_style('admin-menu', '.spoiler-wrap{border:1px solid #c3c4c7;margin:.5em 0;} .spoiler-head{padding:3px;cursor:pointer;} .folded:before{content:"+";margin-right:5px;} .unfolded:before{content:"–";margin-right:5px;} .spoiler-body{display:none;padding:3px;border-top:1px solid #c3c4c7;background-color:rgba(0,0,0,.07);}');
 		wp_add_inline_script('jquery', 'jQuery(document).ready(function($){$(".spoiler-head").click(function(e){$(this).toggleClass("folded").toggleClass("unfolded").next().toggle();});});');
 
 		$this->action_clear_logs();

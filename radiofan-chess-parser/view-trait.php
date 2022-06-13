@@ -6,8 +6,10 @@ trait View{
 	 * регистрирует скрипты и стили для работы шорткода [chess_top_scoreboard]
 	 */
 	public function enqueue_scripts(){
-		wp_register_script('radiofan_chess_parser___script_top_scoreboard', $this->plugin_url.'assets/top-scoreboard.js', ['jquery'], filemtime($this->plugin_dir.'assets/top-scoreboard.js'), 1);
+		wp_register_script('radiofan_chess_parser__script_top_scoreboard', $this->plugin_url.'assets/top-scoreboard.js', ['jquery'], filemtime($this->plugin_dir.'assets/top-scoreboard.js'), 1);
+		wp_register_script('radiofan_chess_parser__script_rating_table', $this->plugin_url.'assets/rating-table.js', ['jquery'], filemtime($this->plugin_dir.'assets/rating-table.js'), 1);
 		wp_register_style('radiofan_chess_parser__style_top_scoreboard', $this->plugin_url.'assets/top-scoreboard.css', false, filemtime($this->plugin_dir.'assets/top-scoreboard.css'));
+		wp_register_style('radiofan_chess_parser__style_rating_table', $this->plugin_url.'assets/rating-table.css', false, filemtime($this->plugin_dir.'assets/rating-table.css'));
 	}
 
 	/**
@@ -19,7 +21,7 @@ trait View{
 	 */
 	public function view_top_scoreboard($atts, $content){
 		
-		wp_enqueue_script('radiofan_chess_parser___script_top_scoreboard');
+		wp_enqueue_script('radiofan_chess_parser__script_top_scoreboard');
 		wp_enqueue_style('radiofan_chess_parser__style_top_scoreboard');
 
 		$atts = shortcode_atts(['list_url' => ''], $atts);
@@ -115,6 +117,9 @@ trait View{
 
 	public function view_players_page_table($atts, $content){
 		global $wpdb;
+		
+		wp_enqueue_style('radiofan_chess_parser__style_rating_table');
+		wp_enqueue_script('radiofan_chess_parser__script_rating_table');
 		
 		$player_sex = isset($_GET['sex']) ? $_GET['sex'] : 'all';
 		$search_value = isset($_GET['q']) ? $_GET['q'] : false;
@@ -217,12 +222,12 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 					$ret['players_list'] .= '<td class="td-text td-'.$type.'-'.$platform.' td-type-'.$r_id.'">';
 					$len = isset($ratings[$id][$r_id]) ? sizeof($ratings[$id][$r_id]) : 0;
 					for($i=0; $i<$len; $i++){
-						if($i == 2){
-							$ret['players_list'] .= '<div class="spoiler-wrap"><div class="spoiler-head folded">Доп. данные</div><div class="spoiler-body">';
+						if($i == 1){
+							$ret['players_list'] .= '<div class="spoiler-wrap"><div class="spoiler-head folded">Ещё</div><div class="spoiler-body">';
 						}
-						$ret['players_list'] .= '<p><code>'.$ratings[$id][$r_id][$i]['update_date'].'</code>:&nbsp;&nbsp;&nbsp;&nbsp;'.$ratings[$id][$r_id][$i]['rating'].'</p>';
+						$ret['players_list'] .= '<p><code>'.mb_substr($ratings[$id][$r_id][$i]['update_date'], 0, 10).'</code>:&nbsp;&nbsp;&nbsp;&nbsp;'.$ratings[$id][$r_id][$i]['rating'].'</p>';
 					}
-					if($len > 2){
+					if($len > 1){
 						$ret['players_list'] .= '</div></div>';
 					}
 					$ret['players_list'] .= '</td>';
@@ -232,15 +237,17 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 		}
 		
 		
-		$ret = '<div class="users-table">
+		$ret = '<div class="players-table">
 					<div class="list-group list-group-horizontal float-left">
 						'.$ret['players_type_links'].'
 					</div>
 					<form method="get" data-not-ajax="true">
-						<div class="float-right">
+						<div class="float-right form-search">
 							<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
-							<input type="search" class="form-control" name="q" value="'.$ret['search_value'].'" autocomplete="off" placeholder="Поиск" style="display:inline-block;width:calc(100% - 70px)">
-							<input type="submit" class="btn btn-primary" value="Поиск" style="display:inline-block;width:64px;">
+							<input type="text" name="q" autocomplete="off"  value="'.$ret['search_value'].'">
+							<button class="button-search" type="submit">
+								<img src="'.get_theme_root_uri().'/chess/assets/icons/search-solid.svg" alt="поиск">
+							</button>
 						</div>
 					</form>
 					<br class="clear">
@@ -248,85 +255,87 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 						<div class="table-nav-pages float-right">
 							<span class="displaying-num">'.$ret['elements_count'].'</span>
 							<span class="pagination-links">
-								<a class="btn btn-primary" href="?page=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
-								<a class="btn btn-primary" href="?page='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
+								<a href="?page=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
+								<a href="?page='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
 								<span class="paging-input">
 									<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
 									<input type="hidden" name="q" value="'.$ret['search_value'].'">
 									<span><span class="curr-pages">&nbsp;'.$ret['curr_page'].'</span> &nbsp;of&nbsp; <span class="total-pages">'.$ret['max_page'].'&nbsp;</span></span>
 								</span>
-								<a class="btn btn-primary" href="?page='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
-								<a class="btn btn-primary" href="?page='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
+								<a href="?page='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
+								<a href="?page='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
 							</span>
 						</div>
 						<br class="clear">
 					</div>
 					<hr>
-					<table class="table table-striped table-bordered admin-table">
-						<thead>
-							<tr>
-								<th class="td-text" rowspan="3">ФШР ID</th>
-								<th class="td-text" rowspan="3">FIDE ID</th>
-								<th class="td-text" rowspan="3">ФИО</th>
-								<th class="td-text" rowspan="3">Пол</th>
-								<th class="td-text" rowspan="3">Год рождения</th>
-								<th class="td-text" colspan="6">Рейтинг</th>
-							</tr>
-							<tr>
-								<th class="td-text" colspan="2">Классика</th>
-								<th class="td-text" colspan="2">Рапид</th>
-								<th class="td-text" colspan="2">Блиц</th>
-							</tr>
-							<tr>
-								<th class="td-text">ФШР</th>
-								<th class="td-text">FIDE</th>
-								<th class="td-text">ФШР</th>
-								<th class="td-text">FIDE</th>
-								<th class="td-text">ФШР</th>
-								<th class="td-text">FIDE</th>
-							</tr>
-						</thead>
-						<tbody>
-						'.$ret['players_list'].'
-						</tbody>
-						<thead>
-							<tr>
-								<th class="td-text" rowspan="3">ФШР ID</th>
-								<th class="td-text" rowspan="3">FIDE ID</th>
-								<th class="td-text" rowspan="3">ФИО</th>
-								<th class="td-text" rowspan="3">Пол</th>
-								<th class="td-text" rowspan="3">Год рождения</th>
-								<th class="td-text">ФШР</th>
-								<th class="td-text">FIDE</th>
-								<th class="td-text">ФШР</th>
-								<th class="td-text">FIDE</th>
-								<th class="td-text">ФШР</th>
-								<th class="td-text">FIDE</th>
-							</tr>
-							<tr>
-								<th class="td-text" colspan="2">Классика</th>
-								<th class="td-text" colspan="2">Рапид</th>
-								<th class="td-text" colspan="2">Блиц</th>
-							</tr>
-							<tr>
-								<th class="td-text" colspan="6">Рейтинг</th>
-							</tr>
-						</thead>
-					</table>
+					<div class="table-box">
+						<table class="table table-striped">
+							<thead>
+								<tr>
+									<th class="td-text" rowspan="3">ФШР ID</th>
+									<th class="td-text" rowspan="3">FIDE ID</th>
+									<th class="td-text" rowspan="3">ФИО</th>
+									<th class="td-text" rowspan="3">Пол</th>
+									<th class="td-text" rowspan="3">Год рождения</th>
+									<th class="td-text" colspan="6">Рейтинг</th>
+								</tr>
+								<tr>
+									<th class="td-text" colspan="2">Классика</th>
+									<th class="td-text" colspan="2">Рапид</th>
+									<th class="td-text" colspan="2">Блиц</th>
+								</tr>
+								<tr>
+									<th class="td-text">ФШР</th>
+									<th class="td-text">FIDE</th>
+									<th class="td-text">ФШР</th>
+									<th class="td-text">FIDE</th>
+									<th class="td-text">ФШР</th>
+									<th class="td-text">FIDE</th>
+								</tr>
+							</thead>
+							<tbody>
+							'.$ret['players_list'].'
+							</tbody>
+							<thead>
+								<tr>
+									<th class="td-text" rowspan="3">ФШР ID</th>
+									<th class="td-text" rowspan="3">FIDE ID</th>
+									<th class="td-text" rowspan="3">ФИО</th>
+									<th class="td-text" rowspan="3">Пол</th>
+									<th class="td-text" rowspan="3">Год рождения</th>
+									<th class="td-text">ФШР</th>
+									<th class="td-text">FIDE</th>
+									<th class="td-text">ФШР</th>
+									<th class="td-text">FIDE</th>
+									<th class="td-text">ФШР</th>
+									<th class="td-text">FIDE</th>
+								</tr>
+								<tr>
+									<th class="td-text" colspan="2">Классика</th>
+									<th class="td-text" colspan="2">Рапид</th>
+									<th class="td-text" colspan="2">Блиц</th>
+								</tr>
+								<tr>
+									<th class="td-text" colspan="6">Рейтинг</th>
+								</tr>
+							</thead>
+						</table>
+					</div>
 					<hr>
 					<div class="table-nav">
 						<div class="table-nav-pages float-right">
 							<span class="displaying-num">'.$ret['elements_count'].'</span>
 							<span class="pagination-links">
-								<a class="btn btn-primary" href="?page=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
-								<a class="btn btn-primary" href="?page='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
+								<a href="?page=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
+								<a href="?page='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
 								<span class="paging-input">
 									<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
 									<input type="hidden" name="q" value="'.$ret['search_value'].'">
 									<span><span class="curr-pages">&nbsp;'.$ret['curr_page'].'</span> &nbsp;of&nbsp; <span class="total-pages">'.$ret['max_page'].'&nbsp;</span></span>
 								</span>
-								<a class="btn btn-primary" href="?page='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
-								<a class="btn btn-primary" href="?page='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
+								<a href="?page='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
+								<a href="?page='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
 							</span>
 						</div>
 						<br class="clear">

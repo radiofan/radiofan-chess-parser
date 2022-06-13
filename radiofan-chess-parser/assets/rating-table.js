@@ -1,0 +1,1 @@
+jQuery(document).ready(function($){$('.spoiler-head').click(function(e){$(this).toggleClass('folded').toggleClass('unfolded').next().toggle();});});
