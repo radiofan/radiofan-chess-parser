@@ -6,6 +6,17 @@
 	float:right;
 }
 
+.table-nav-pages{
+	display:flex;
+	grid-gap:10px;
+	align-items:center;
+}
+
+.pagination-links{
+	display:flex;
+	grid-gap:10px;
+}
+
 .list-group-horizontal > .list-group-item:first-child{
 	border-bottom-left-radius:0.25rem;
 	border-top-right-radius:0;
@@ -100,7 +111,7 @@ a.list-group-item{
 
 
 .table-box p{
-	margin: 0;
+	margin:0;
 }
 
 .td-type-1, .td-type-2, .td-type-3, .td-type-4, .td-type-5, .td-type-6{
@@ -112,7 +123,6 @@ a.list-group-item{
 	overflow-x:auto;
 	width:100%;
 }
-
 
 
 

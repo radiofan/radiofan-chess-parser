@@ -168,7 +168,7 @@ trait View{
 		if($max_page == 0 || $players_c % $elem_per_page)
 			$max_page += 1;
 
-		$curr_page = isset($_GET['page']) ? absint($_GET['page']) : 1;
+		$curr_page = isset($_GET['page_n']) ? absint($_GET['page_n']) : 1;
 		if($curr_page < 1)
 			$curr_page = 1;
 		if($curr_page > $max_page)
@@ -255,15 +255,17 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 						<div class="table-nav-pages float-right">
 							<span class="displaying-num">'.$ret['elements_count'].'</span>
 							<span class="pagination-links">
-								<a href="?page=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
-								<a href="?page='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
+								<a href="?page_n=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
+								<a href="?page_n='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
 								<span class="paging-input">
-									<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
-									<input type="hidden" name="q" value="'.$ret['search_value'].'">
-									<span><span class="curr-pages">&nbsp;'.$ret['curr_page'].'</span> &nbsp;of&nbsp; <span class="total-pages">'.$ret['max_page'].'&nbsp;</span></span>
+									<form method="get" data-not-ajax="true">
+										<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
+										<input type="hidden" name="q" value="'.$ret['search_value'].'">
+										<span><input type="number" step="1" min="1" max="'.$ret['max_page'].'" name="page_n" value="'.$ret['curr_page'].'" class="curr-pages"> &nbsp;of&nbsp; <span class="total-pages">'.$ret['max_page'].'&nbsp;</span></span>
+									</form>
 								</span>
-								<a href="?page='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
-								<a href="?page='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
+								<a href="?page_n='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
+								<a href="?page_n='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
 							</span>
 						</div>
 						<br class="clear">
@@ -327,15 +329,17 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 						<div class="table-nav-pages float-right">
 							<span class="displaying-num">'.$ret['elements_count'].'</span>
 							<span class="pagination-links">
-								<a href="?page=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
-								<a href="?page='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
+								<a href="?page_n=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
+								<a href="?page_n='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
 								<span class="paging-input">
-									<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
-									<input type="hidden" name="q" value="'.$ret['search_value'].'">
-									<span><span class="curr-pages">&nbsp;'.$ret['curr_page'].'</span> &nbsp;of&nbsp; <span class="total-pages">'.$ret['max_page'].'&nbsp;</span></span>
+									<form method="get" data-not-ajax="true">
+										<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
+										<input type="hidden" name="q" value="'.$ret['search_value'].'">
+										<span><input type="number" step="1" min="1" max="'.$ret['max_page'].'" name="page_n" value="'.$ret['curr_page'].'" class="curr-pages"> &nbsp;of&nbsp; <span class="total-pages">'.$ret['max_page'].'&nbsp;</span></span>
+									</form>
 								</span>
-								<a href="?page='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
-								<a href="?page='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
+								<a href="?page_n='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
+								<a href="?page_n='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
 							</span>
 						</div>
 						<br class="clear">
