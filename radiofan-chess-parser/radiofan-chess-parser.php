@@ -2,11 +2,11 @@
 /**
  * @wordpress-plugin
  * Plugin Name: RADIOFAN Chess Parser
- * Plugin URI: https://github.com/radiofan
- * Version: 0.3
+ * Plugin URI: https://github.com/radiofan/radiofan-chess-parser
+ * Version: 1.0
  * Author: RADIOFAN
  * Author URI: http://vk.com/radio_fan
- * Description: шорткод <code>[chess_top_scoreboard list_url=""]</code> выводит актуальный блок топа игроков, атрибут list_url может содержать ссылку на список всех игроков
+ * Description: Данный плагин позволяет парсить и данные игроков с сайта <a href="https://ratings.ruchess.ru/api">ratings.ruchess.ru</a>.<br>С помощью шорткода <code>[chess_top_scoreboard list_url=""]</code> можно вывести актуальный блок топа игроков, атрибут list_url может содержать ссылку на список всех игроков.<br>С помощью шорткода <code>[chess_players_page]</code> можно вывести таблицу с поиском, сортировкой и пагинацией всех игроков.<br>Также доступна настройка парсинга по фильтру
  * Requires PHP: 7.0
  * Requires at least: 4.7
 */
