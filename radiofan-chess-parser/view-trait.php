@@ -122,6 +122,8 @@ trait View{
 		wp_enqueue_script('radiofan_chess_parser__script_rating_table');
 		
 		$player_sex = isset($_GET['sex']) ? $_GET['sex'] : 'all';
+		$sort = isset($_GET['sort']) ? $_GET['sort'] : 'name';
+		$sort_order = isset($_GET['order']) ? $_GET['order'] : 'asc';
 		$search_value = isset($_GET['q']) ? $_GET['q'] : false;
 		$query = '';
 		//выборка типов пользователя
@@ -148,6 +150,19 @@ trait View{
 				$player_sex = 'all';
 				break;
 		}
+
+		//сортировка
+		$sort_ui = [
+			'name' => false,
+			'id_ruchess' => false,
+			'id_fide' => false,
+			'birth_year' => false,
+		];
+		
+		if(!isset($sort_ui[$sort]))
+			$sort = 'name';
+		
+		$sort_order = ($sort_order != 'desc' && $sort_order != 'asc') ? 'asc' : $sort_order;
 		//поиск в выборке
 		if($search_value){
 			$query .= ($query ? ' AND' : ' WHERE');
@@ -173,29 +188,61 @@ trait View{
 			$curr_page = 1;
 		if($curr_page > $max_page)
 			$curr_page = $max_page;
+		
+		//данные для вывода в html
+		$search_value_attr = esc_attr($search_value);
+		$elements_count = num_decline($players_c, 'игрок', 'игрока', 'игроков');
+		
+		//создание ссылок для перехода по страницам
+		$href_builder = [
+			'page_n' => 0,
+		];
+		
+		if($player_sex != 'all')
+			$href_builder['sex'] = $player_sex;
+		if($sort != 'name')
+			$href_builder['sort'] = $sort;
+		if($sort_order != 'asc')
+			$href_builder['order'] = $sort_order;
+		if($search_value)
+			$href_builder['q'] = $search_value;
 
-		//возвращаемое значение
-		$ret = array(
-			'elements_count' => num_decline($players_c, 'игрок', 'игрока', 'игроков'),
-			'curr_page' => $curr_page,
-			'curr_page+1' => $curr_page+1,
-			'curr_page-1' => $curr_page-1,
-			'max_page' => $max_page,
-			'player_sex' => $player_sex,
-			'players_type_links' => '
-<a href="?sex=all" class="list-group-item list-group-item-action'.($player_sex == 'all' ? ' active' : '').'">Все</a>
-<a href="?sex=m" class="list-group-item list-group-item-action'.($player_sex == 'male' ? ' active' : '').'">Мужчины</a>
-<a href="?sex=f" class="list-group-item list-group-item-action'.($player_sex == 'female' ? ' active' : '').'">Женщины</a>',
-			'players_list' => '',
-			'search_value_url' => $search_value ? '&q='.urlencode($search_value) : '',
-			'search_value' => esc_attr($search_value)
-		);
+		$href_builder['page_n'] = 1;
+		$href_first_page = http_build_query($href_builder);
 
-		//генерация таблицы
+		$href_builder['page_n'] = $curr_page-1;
+		$href_pre_page = http_build_query($href_builder);
+
+		$href_builder['page_n'] = $curr_page+1;
+		$href_next_page = http_build_query($href_builder);
+
+		$href_builder['page_n'] = $max_page;
+		$href_last_page = http_build_query($href_builder);
+		
+		unset($href_builder['page_n']);
+		
+		foreach($sort_ui as $sort_key => $data){
+			$href_builder['sort'] = $sort_key;
+			$triangle = $sort_key != $sort ? 0 : ($sort_order == 'asc' ? 1 : -1);
+			$href_builder['order'] = $triangle == 1 ? 'desc' : 'asc';
+			$sort_ui[$sort_key] = ['href' => http_build_query($href_builder), 'triangle_html' => ''];
+			switch($triangle){
+				case 1:
+					$sort_ui[$sort_key]['triangle_html'] = '<span class="sort_triangle">▲</span>';
+					break;
+				case -1:
+					$sort_ui[$sort_key]['triangle_html'] = '<span class="sort_triangle">▼</span>';
+					break;
+				default:
+					break;
+			}
+		}
+
+		//генерация строк таблицы
 		$players_res = $wpdb->get_results(
 			'SELECT `id_ruchess`, `id_fide`, `name`, `sex`, `birth_year`
 FROM `'.$wpdb->prefix.'rad_chess_players`
-'.$query.$wpdb->prepare(' LIMIT %d OFFSET %d', $elem_per_page, ($curr_page-1)*$elem_per_page), ARRAY_A);
+'.$query.' ORDER BY `'.$sort.'` '.mb_strtoupper($sort_order).$wpdb->prepare(' LIMIT %d OFFSET %d', $elem_per_page, ($curr_page-1)*$elem_per_page), ARRAY_A);
 		
 		$players = [];
 		
@@ -205,10 +252,11 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 			unset($players_res[$i]);
 		}
 		$ratings = $this->get_players_ratings(array_keys($players));
-		
+
+		$players_list = '';
 		foreach($players as $id_ruchess => $data){
 			$id = $data['id_ruchess'];
-			$ret['players_list'] .= '
+			$players_list .= '
 <tr>
 	<td class="td-text td-id_ruchess"><a href="'.self::RUCHESS_HREF.$id.'">'.$id.'</a></td>
 	<td class="td-text td-id_fide">'.($data['id_fide'] ? '<a href="'.self::FIDE_HREF.$data['id_fide'].'">'.$data['id_fide'].'</a>' : '').'</td>
@@ -219,32 +267,34 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 			foreach(self::GAME_TYPE as $type_id => $type){
 				foreach([1 => 'ruchess', 2 => 'fide'] as $platform_id => $platform){
 					$r_id = $type_id*2+$platform_id;
-					$ret['players_list'] .= '<td class="td-text td-'.$type.'-'.$platform.' td-type-'.$r_id.'">';
+					$players_list .= '<td class="td-text td-'.$type.'-'.$platform.' td-type-'.$r_id.'">';
 					$len = isset($ratings[$id][$r_id]) ? sizeof($ratings[$id][$r_id]) : 0;
 					for($i=0; $i<$len; $i++){
 						if($i == 1){
-							$ret['players_list'] .= '<div class="spoiler-wrap"><div class="spoiler-head folded">Ещё</div><div class="spoiler-body">';
+							$players_list .= '<div class="spoiler-wrap"><div class="spoiler-head folded">Ещё</div><div class="spoiler-body">';
 						}
-						$ret['players_list'] .= '<p><code>'.mb_substr($ratings[$id][$r_id][$i]['update_date'], 0, 10).'</code>:&nbsp;&nbsp;&nbsp;&nbsp;'.$ratings[$id][$r_id][$i]['rating'].'</p>';
+						$players_list .= '<p><code>'.mb_substr($ratings[$id][$r_id][$i]['update_date'], 0, 10).'</code>:&nbsp;&nbsp;&nbsp;&nbsp;'.$ratings[$id][$r_id][$i]['rating'].'</p>';
 					}
 					if($len > 1){
-						$ret['players_list'] .= '</div></div>';
+						$players_list .= '</div></div>';
 					}
-					$ret['players_list'] .= '</td>';
+					$players_list .= '</td>';
 				}
 			}
-			$ret['players_list'] .= '</tr>';
+			$players_list .= '</tr>';
 		}
 		
-		
+		//генерация html таблицы и пагинации
 		$ret = '<div class="players-table">
 					<div class="list-group list-group-horizontal float-left">
-						'.$ret['players_type_links'].'
+						<a href="?sex=all" class="list-group-item list-group-item-action'.($player_sex == 'all' ? ' active' : '').'">Все</a>
+						<a href="?sex=m" class="list-group-item list-group-item-action'.($player_sex == 'male' ? ' active' : '').'">Мужчины</a>
+						<a href="?sex=f" class="list-group-item list-group-item-action'.($player_sex == 'female' ? ' active' : '').'">Женщины</a>
 					</div>
 					<form method="get" data-not-ajax="true">
 						<div class="float-right form-search">
-							<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
-							<input type="text" name="q" autocomplete="off"  value="'.$ret['search_value'].'">
+							<input type="hidden" name="sex" value="'.$player_sex.'">
+							<input type="text" name="q" autocomplete="off" value="'.$search_value_attr.'">
 							<button class="button-search" type="submit">
 								<img src="'.get_theme_root_uri().'/chess/assets/icons/search-solid.svg" alt="поиск">
 							</button>
@@ -253,19 +303,21 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 					<br class="clear">
 					<div class="table-nav">
 						<div class="table-nav-pages float-right">
-							<span class="displaying-num">'.$ret['elements_count'].'</span>
+							<span class="displaying-num">'.$elements_count.'</span>
 							<span class="pagination-links">
-								<a href="?page_n=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
-								<a href="?page_n='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
+								<a href="?'.$href_first_page.'">«</a>
+								<a href="?'.$href_pre_page.'">‹</a>
 								<span class="paging-input">
 									<form method="get" data-not-ajax="true">
-										<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
-										<input type="hidden" name="q" value="'.$ret['search_value'].'">
-										<span><input type="number" step="1" min="1" max="'.$ret['max_page'].'" name="page_n" value="'.$ret['curr_page'].'" class="curr-pages"> &nbsp;of&nbsp; <span class="total-pages">'.$ret['max_page'].'&nbsp;</span></span>
+										<input type="hidden" name="sex" value="'.$player_sex.'">
+										<input type="hidden" name="q" value="'.$search_value_attr.'">
+										<input type="hidden" name="sort" value="'.$sort.'">
+										<input type="hidden" name="sort_order" value="'.$sort_order.'">
+										<span><input type="number" step="1" min="1" max="'.$max_page.'" name="page_n" value="'.$curr_page.'" class="curr-pages"> &nbsp;of&nbsp; <span class="total-pages">'.$max_page.'&nbsp;</span></span>
 									</form>
 								</span>
-								<a href="?page_n='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
-								<a href="?page_n='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
+								<a href="?'.$href_next_page.'">›</a>
+								<a href="?'.$href_last_page.'">»</a>
 							</span>
 						</div>
 						<br class="clear">
@@ -275,11 +327,11 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 						<table class="table table-striped">
 							<thead>
 								<tr>
-									<th class="td-text" rowspan="3">ФШР ID</th>
-									<th class="td-text" rowspan="3">FIDE ID</th>
-									<th class="td-text" rowspan="3">ФИО</th>
+									<th class="td-text" rowspan="3"><a href="?'.$sort_ui['id_ruchess']['href'].'">ФШР ID '.$sort_ui['id_ruchess']['triangle_html'].'</a></th>
+									<th class="td-text" rowspan="3"><a href="?'.$sort_ui['id_fide']['href'].'">FIDE ID '.$sort_ui['id_fide']['triangle_html'].'</a></th>
+									<th class="td-text" rowspan="3"><a href="?'.$sort_ui['name']['href'].'">ФИО '.$sort_ui['name']['triangle_html'].'</a></th>
 									<th class="td-text" rowspan="3">Пол</th>
-									<th class="td-text" rowspan="3">Год рождения</th>
+									<th class="td-text" rowspan="3"><a href="?'.$sort_ui['birth_year']['href'].'">Год рождения '.$sort_ui['birth_year']['triangle_html'].'</a></th>
 									<th class="td-text" colspan="6">Рейтинг</th>
 								</tr>
 								<tr>
@@ -297,15 +349,15 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 								</tr>
 							</thead>
 							<tbody>
-							'.$ret['players_list'].'
+							'.$players_list.'
 							</tbody>
 							<thead>
 								<tr>
-									<th class="td-text" rowspan="3">ФШР ID</th>
-									<th class="td-text" rowspan="3">FIDE ID</th>
-									<th class="td-text" rowspan="3">ФИО</th>
+									<th class="td-text" rowspan="3"><a href="?'.$sort_ui['id_ruchess']['href'].'">ФШР ID '.$sort_ui['id_ruchess']['triangle_html'].'</a></th>
+									<th class="td-text" rowspan="3"><a href="?'.$sort_ui['id_fide']['href'].'">FIDE ID '.$sort_ui['id_fide']['triangle_html'].'</a></th>
+									<th class="td-text" rowspan="3"><a href="?'.$sort_ui['name']['href'].'">ФИО '.$sort_ui['name']['triangle_html'].'</a></th>
 									<th class="td-text" rowspan="3">Пол</th>
-									<th class="td-text" rowspan="3">Год рождения</th>
+									<th class="td-text" rowspan="3"><a href="?'.$sort_ui['birth_year']['href'].'">Год рождения '.$sort_ui['birth_year']['triangle_html'].'</a></th>
 									<th class="td-text">ФШР</th>
 									<th class="td-text">FIDE</th>
 									<th class="td-text">ФШР</th>
@@ -327,19 +379,21 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 					<hr>
 					<div class="table-nav">
 						<div class="table-nav-pages float-right">
-							<span class="displaying-num">'.$ret['elements_count'].'</span>
+							<span class="displaying-num">'.$elements_count.'</span>
 							<span class="pagination-links">
-								<a href="?page_n=1&sex='.$ret['player_sex'].$ret['search_value_url'].'">«</a>
-								<a href="?page_n='.$ret['curr_page-1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">‹</a>
+								<a href="?'.$href_first_page.'">«</a>
+								<a href="?'.$href_pre_page.'">‹</a>
 								<span class="paging-input">
 									<form method="get" data-not-ajax="true">
-										<input type="hidden" name="sex" value="'.$ret['player_sex'].'">
-										<input type="hidden" name="q" value="'.$ret['search_value'].'">
-										<span><input type="number" step="1" min="1" max="'.$ret['max_page'].'" name="page_n" value="'.$ret['curr_page'].'" class="curr-pages"> &nbsp;of&nbsp; <span class="total-pages">'.$ret['max_page'].'&nbsp;</span></span>
+										<input type="hidden" name="sex" value="'.$player_sex.'">
+										<input type="hidden" name="q" value="'.$search_value_attr.'">
+										<input type="hidden" name="sort" value="'.$sort.'">
+										<input type="hidden" name="sort_order" value="'.$sort_order.'">
+										<span><input type="number" step="1" min="1" max="'.$max_page.'" name="page_n" value="'.$curr_page.'" class="curr-pages"> &nbsp;of&nbsp; <span class="total-pages">'.$max_page.'&nbsp;</span></span>
 									</form>
 								</span>
-								<a href="?page_n='.$ret['curr_page+1'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">›</a>
-								<a href="?page_n='.$ret['max_page'].'&sex='.$ret['player_sex'].$ret['search_value_url'].'">»</a>
+								<a href="?'.$href_next_page.'">›</a>
+								<a href="?'.$href_last_page.'">»</a>
 							</span>
 						</div>
 						<br class="clear">
