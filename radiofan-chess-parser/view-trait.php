@@ -173,6 +173,12 @@ trait View{
 			'id_ruchess' => false,
 			'id_fide' => false,
 			'birth_year' => false,
+			'rating_ru_s' => false,
+			'rating_fi_s' => false,
+			'rating_ru_r' => false,
+			'rating_fi_r' => false,
+			'rating_ru_b' => false,
+			'rating_fi_b' => false,
 		];
 		
 		if(!isset($sort_ui[$sort]))
@@ -255,9 +261,10 @@ trait View{
 		}
 
 		//генерация строк таблицы
+		$left_join = mb_substr($sort, 0, 6) === 'rating' ? ' LEFT JOIN `'.$wpdb->prefix.'rad_chess_current_ratings` AS `r` ON `p`.`id_ruchess` = `r`.`id_ruchess`' : '';
 		$players_res = $wpdb->get_results(
-			'SELECT `id_ruchess`, `id_fide`, `name`, `sex`, `birth_year`
-FROM `'.$wpdb->prefix.'rad_chess_players`
+			'SELECT `p`.`id_ruchess`, `id_fide`, `name`, `sex`, `birth_year`
+FROM `'.$wpdb->prefix.'rad_chess_players` AS `p`'.$left_join.'
 '.$query.' ORDER BY `'.$sort.'` '.mb_strtoupper($sort_order).$wpdb->prepare(' LIMIT %d OFFSET %d', $elem_per_page, ($curr_page-1)*$elem_per_page), ARRAY_A);
 		
 		$players = [];
@@ -356,12 +363,12 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 									<th class="td-text" colspan="2">Блиц</th>
 								</tr>
 								<tr>
-									<th class="td-text">ФШР</th>
-									<th class="td-text">FIDE</th>
-									<th class="td-text">ФШР</th>
-									<th class="td-text">FIDE</th>
-									<th class="td-text">ФШР</th>
-									<th class="td-text">FIDE</th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_ru_s']['href'].'">ФШР '.$sort_ui['rating_ru_s']['triangle_html'].'</a></th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_fi_s']['href'].'">FIDE '.$sort_ui['rating_fi_s']['triangle_html'].'</a></th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_ru_r']['href'].'">ФШР '.$sort_ui['rating_ru_r']['triangle_html'].'</a></th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_fi_r']['href'].'">FIDE '.$sort_ui['rating_fi_r']['triangle_html'].'</a></th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_ru_b']['href'].'">ФШР '.$sort_ui['rating_ru_b']['triangle_html'].'</a></th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_fi_b']['href'].'">FIDE '.$sort_ui['rating_fi_b']['triangle_html'].'</a></th>
 								</tr>
 							</thead>
 							<tbody>
@@ -374,12 +381,12 @@ FROM `'.$wpdb->prefix.'rad_chess_players`
 									<th class="td-text" rowspan="3"><a href="?'.$sort_ui['name']['href'].'">ФИО '.$sort_ui['name']['triangle_html'].'</a></th>
 									<th class="td-text" rowspan="3">Пол</th>
 									<th class="td-text" rowspan="3"><a href="?'.$sort_ui['birth_year']['href'].'">Год рождения '.$sort_ui['birth_year']['triangle_html'].'</a></th>
-									<th class="td-text">ФШР</th>
-									<th class="td-text">FIDE</th>
-									<th class="td-text">ФШР</th>
-									<th class="td-text">FIDE</th>
-									<th class="td-text">ФШР</th>
-									<th class="td-text">FIDE</th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_ru_s']['href'].'">ФШР '.$sort_ui['rating_ru_s']['triangle_html'].'</a></th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_fi_s']['href'].'">FIDE '.$sort_ui['rating_fi_s']['triangle_html'].'</a></th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_ru_r']['href'].'">ФШР '.$sort_ui['rating_ru_r']['triangle_html'].'</a></th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_fi_r']['href'].'">FIDE '.$sort_ui['rating_fi_r']['triangle_html'].'</a></th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_ru_b']['href'].'">ФШР '.$sort_ui['rating_ru_b']['triangle_html'].'</a></th>
+									<th class="td-text"><a href="?'.$sort_ui['rating_fi_b']['href'].'">FIDE '.$sort_ui['rating_fi_b']['triangle_html'].'</a></th>
 								</tr>
 								<tr>
 									<th class="td-text" colspan="2">Классика</th>

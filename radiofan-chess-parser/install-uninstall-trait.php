@@ -100,10 +100,6 @@ trait InstallUninstall{
 			delete_option('radiofan_chess_parser__etag_'.$type_id);
 			delete_option('radiofan_chess_parser__players_hash_'.$type_id);
 			delete_option('radiofan_chess_parser__ratings_hash_'.$type_id);
-			delete_option('radiofan_chess_parser__top_man_'.$type_id);//todo del
-			delete_option('radiofan_chess_parser__top_man_'.($type_id+1));
-			delete_option('radiofan_chess_parser__top_woman_'.$type_id);
-			delete_option('radiofan_chess_parser__top_woman_'.($type_id+1));
 		}
 	}
 
@@ -125,10 +121,6 @@ trait InstallUninstall{
 			delete_option('radiofan_chess_parser__etag_'.$type_id);
 			delete_option('radiofan_chess_parser__players_hash_'.$type_id);
 			delete_option('radiofan_chess_parser__ratings_hash_'.$type_id);
-			delete_option('radiofan_chess_parser__top_man_'.$type_id);//todo del
-			delete_option('radiofan_chess_parser__top_man_'.($type_id+1));
-			delete_option('radiofan_chess_parser__top_woman_'.$type_id);
-			delete_option('radiofan_chess_parser__top_woman_'.($type_id+1));
 		}
 	}
 }
