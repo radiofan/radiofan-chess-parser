@@ -151,7 +151,7 @@ trait AdminPage{
 					<li><code>int $region_number</code> - номер региона</li>
 					<li><code>int $region_name</code> - наименование региона</li>
 				</ul>
-				Код должен <span style="color:red;">возращать bool</span> (или присваивать перемнной $accept), true - игрок подходит<br>
+				Код должен <span style="color:red;">возращать bool</span> (или присваивать переменной $accept), true - игрок подходит<br>
 				<textarea
 					name="radiofan_chess_parser__import_filter"
 					id="radiofan_chess_parser__import_filter"
