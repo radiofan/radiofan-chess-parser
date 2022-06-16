@@ -129,8 +129,6 @@ class ChessParser{
 			rad_log::log_wp_error($wp_error);
 			if(!$wp_error->get_error_messages('db_import_ratings_error')){
 				update_option('radiofan_chess_parser__ratings_hash_'.$type_id, $data_ratings_hash, false);
-				$this->update_top($type_id);//рейтинг ruchess
-				$this->update_top($type_id+1);//рейтинг fide
 			}
 		}else{
 			rad_log::log('Рейтинги '.$type.' не требуют обновления', 'info', 'radiofan_chess_parser__ratings_hash_'.$type_id.' = '.$data_ratings_hash);

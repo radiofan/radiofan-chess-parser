@@ -36,8 +36,8 @@ trait AdminPage{
 
 			add_action('load-'.$hook, [$this, 'init_players_page']);
 		}
-		
-		add_submenu_page(
+
+		$hook = add_submenu_page(
 			'radiofan_chess_parser',
 			'Настройки Chess Parser',
 			'Настройки',
@@ -45,6 +45,9 @@ trait AdminPage{
 			'radiofan_chess_parser__settings',
 			[$this, 'view_settings_page']
 		);
+		if($hook){
+			add_action('load-'.$hook, [$this, 'init_settings_page']);
+		}
 
 		$hook = add_submenu_page(
 			'radiofan_chess_parser',
@@ -77,6 +80,10 @@ trait AdminPage{
 		<?php
 	}
 
+	/**
+	 * провизводит действия до загрузки страницы игроков
+	 * создает таблицу для вывода
+	 */
 	public function init_players_page(){
 		require_once 'players-table-class.php';
 		$this->PlayersTable = new PlayersTable();
@@ -92,7 +99,8 @@ trait AdminPage{
 		}
 		
 		echo '<div class="wrap">
-			<h2>'.get_admin_page_title().'</h2>';
+			<h1 class="wp-heading-inline">'.get_admin_page_title().'</h1>
+			<a href="?page=radiofan_chess_parser__settings&action=radiofan_chess_parser__update_current_ratings&_wpnonce='.wp_create_nonce('radiofan_chess_parser__update_current_ratings').'" class="page-title-action">Обновить текущие рейтинги</a>';
 
 		settings_errors();
 		echo '<form method="POST" action="options.php">';
@@ -103,6 +111,15 @@ trait AdminPage{
 		</div>';
 		
 
+	}
+
+	/**
+	 * провизводит действия до загрузки страницы настроек
+	 * обрабатывает событие обновления текущих рейтингов
+	 * @see AdminPage::action_update_current_ratings
+	 */
+	public function init_settings_page(){
+		$this->action_update_current_ratings();
 	}
 
 	/**
@@ -211,6 +228,9 @@ trait AdminPage{
 
 	/**
 	 * провизводит действия до загрузки страницы логов
+	 * подключает доп стили и скрипты
+	 * обрабатывает событие очистки таблицы rad_chess_logs
+	 * @see AdminPage::action_clear_logs
 	 */
 	public function init_logs_page(){
 		//подключаем скрипты и стили спойлера
@@ -221,7 +241,7 @@ trait AdminPage{
 	}
 
 	/**
-	 * Событе очистки таблицы rad_chess_logs
+	 * Событие очистки таблицы rad_chess_logs
 	 * требуется $_REQUEST['action'] == 'radiofan_chess_parser__clear_logs' и wpnonce('radiofan_chess_parser__clear_logs')
 	 */
 	protected function action_clear_logs(){
@@ -237,7 +257,77 @@ trait AdminPage{
 		check_admin_referer('radiofan_chess_parser__clear_logs');
 		
 		global $wpdb;
-		$wpdb->query('TRUNCATE TABLE '.$wpdb->prefix.'rad_chess_logs');		
+		$wpdb->query('TRUNCATE TABLE '.$wpdb->prefix.'rad_chess_logs');
+
+		wp_redirect(self_admin_url('admin.php?page=radiofan_chess_parser__logs'));
+		exit;
+	}
+
+	/**
+	 * Событие обновления текущих рейтингов
+	 * заполняет таблицу rad_chess_current_ratings текущими рейтингами из таблицы rad_chess_players_ratings
+	 * требуется $_REQUEST['action'] == 'radiofan_chess_parser__update_current_ratings' и wpnonce('radiofan_chess_parser__update_current_ratings')
+	 */
+	protected function action_update_current_ratings(){
+		if(empty($_REQUEST['_wpnonce']) || empty($_REQUEST['action']) || $_REQUEST['action'] != 'radiofan_chess_parser__update_current_ratings'){
+			return;
+		}
+
+		if(!current_user_can('manage_options')){
+			wp_nonce_ays('');
+			return;
+		}
+
+		check_admin_referer('radiofan_chess_parser__update_current_ratings');
+		
+		$time_statistic = ['current_ratings_update_start' => microtime(1)];
+
+		global $wpdb;
+		$wpdb->query('TRUNCATE TABLE '.$wpdb->prefix.'rad_chess_current_ratings');
+		
+		$players_c = $wpdb->get_var('SELECT COUNT(*) FROM '.$wpdb->prefix.'rad_chess_players');
+		for($player_start = 0; $player_start < $players_c; $player_start += 500){
+			$players = $wpdb->get_col('SELECT `id_ruchess` FROM '.$wpdb->prefix.'rad_chess_players LIMIT 500 OFFSET '.$player_start);
+			$players_ratings = $this->get_players_ratings($players);
+			$insert_query = 'INSERT INTO '.$wpdb->prefix.'rad_chess_current_ratings (`id_ruchess`, `rating_ru_s`, `rating_fi_s`, `rating_ru_r`, `rating_fi_r`, `rating_ru_b`, `rating_fi_b`) VALUES ';
+			$type_converter = [
+				1 => 'rating_ru_s',
+				2 => 'rating_fi_s',
+				3 => 'rating_ru_r',
+				4 => 'rating_fi_r',
+				5 => 'rating_ru_b',
+				6 => 'rating_fi_b',
+			];
+			foreach($players_ratings as $player_id => $all_ratings){
+				if(empty($all_ratings))
+					continue;
+				$insert_values = [
+					'id_ruchess' => $player_id,
+					'rating_ru_s' => 'NULL',
+					'rating_fi_s' => 'NULL',
+					'rating_ru_r' => 'NULL',
+					'rating_fi_r' => 'NULL',
+					'rating_ru_b' => 'NULL',
+					'rating_fi_b' => 'NULL',
+				];
+				foreach($all_ratings as $r_type => $ratings){
+					if(!isset($type_converter[$r_type])){
+						rad_log::log('update_current_ratings_warning: Неопознанный тип рейтинга '.$r_type, 'warning', 'player ruchess_id: '.$player_id);
+						continue;
+					}
+					$insert_values[$type_converter[$r_type]] = $ratings[0]['rating'];
+				}
+				$insert_query .= '('.implode(', ', $insert_values).'), ';
+			}
+			$insert_query = mb_substr($insert_query, 0, -2);
+			if($wpdb->query($insert_query) === false){
+				rad_log::log('update_current_ratings_error: Не удалось обновить текущий рейтинг', 'error', [$insert_query, $wpdb->last_error]);
+			}
+		}
+
+		$time_statistic['current_ratings_update_end'] = microtime(1);
+		$time_statistic['current_ratings_update_time'] = $time_statistic['current_ratings_update_end'] - $time_statistic['current_ratings_update_start'];
+		rad_log::log('update_current_ratings_success: Текущие рейтинги обновлены', 'success', $time_statistic);
 
 		wp_redirect(self_admin_url('admin.php?page=radiofan_chess_parser__logs'));
 		exit;

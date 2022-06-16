@@ -313,7 +313,7 @@ trait Parser{
 			$query = mb_substr($query, 0, mb_strlen($query)-2);
 			if($update){
 				//MySQL  >= 8.0.20
-				//$query .= 'AS new ON DUPLICATE KEY UPDATE `id_fide` = new.id_fide, `name` = new.name, `sex` = new.sex, `country` = new.country, `birth_year` = new.birth_year, `region_number` = new.region_number, `region_name` = new.region_name';
+				//$query .= ' AS new ON DUPLICATE KEY UPDATE `id_fide` = new.id_fide, `name` = new.name, `sex` = new.sex, `country` = new.country, `birth_year` = new.birth_year, `region_number` = new.region_number, `region_name` = new.region_name';
 				$query .= ' ON DUPLICATE KEY UPDATE `id_fide` = VALUES(id_fide), `name` = VALUES(name), `sex` = VALUES(sex), `country` = VALUES(country), `birth_year` = VALUES(birth_year), `region_number` = VALUES(region_number), `region_name` = VALUES(region_name)';
 			}
 
@@ -345,6 +345,15 @@ trait Parser{
 		$statistic = [];
 		$statistic['ratings_was'] = $wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players_ratings`');
 		
+		$type_converter = [
+			1 => 'rating_ru_s',
+			2 => 'rating_fi_s',
+			3 => 'rating_ru_r',
+			4 => 'rating_fi_r',
+			5 => 'rating_ru_b',
+			6 => 'rating_fi_b',
+		];
+		
 		$ratings_len = sizeof($ratings);
 		for($i=0; $i<$ratings_len; $i++){
 			$id = absint($ratings[$i]['id_ruchess']);
@@ -360,8 +369,21 @@ trait Parser{
 					ORDER BY `update_date` DESC LIMIT 1
 				), -1)';
 			
-			if($wpdb->query($query) === false){
+			$insert_c = $wpdb->query($query);
+			if($insert_c === false){
 				$import_error->add('db_import_ratings_error', 'Не удалось добавить рейтинги', [$query, $wpdb->last_error]);
+				continue;
+			}
+			
+			if($insert_c){
+				$insert_query = 'INSERT INTO '.$wpdb->prefix.'rad_chess_current_ratings (`id_ruchess`, `'.$type_converter[$cur_rating_type].'`) VALUES ('.$id.', '.$rating.')';
+				//MySQL  >= 8.0.20
+				//$insert_query .= ' AS new ON DUPLICATE KEY UPDATE `'.$type_converter[$cur_rating_type].'` = new.'.$type_converter[$cur_rating_type];
+				$insert_query .= ' ON DUPLICATE KEY UPDATE `'.$type_converter[$cur_rating_type].'` = VALUES('.$type_converter[$cur_rating_type].')';
+
+				if($wpdb->query($insert_query) === false){
+					$import_error->add('db_import_ratings_error', 'Не удалось обновить текущий рейтинг', [$insert_query, $wpdb->last_error]);
+				}
 			}
 		}
 		

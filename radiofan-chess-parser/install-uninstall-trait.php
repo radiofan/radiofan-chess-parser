@@ -38,6 +38,20 @@ trait InstallUninstall{
 				KEY key_ratings_id_ruchess (id_ruchess)
 			) DEFAULT CHARACTER SET '.$wpdb->charset.' COLLATE '.$wpdb->collate.';';
 
+		//rad_chess_current_ratings
+		$sql_rad_chess_current_ratings =
+			'CREATE TABLE '.$wpdb->prefix.'rad_chess_current_ratings (
+				id_ruchess    bigint(11) unsigned NOT NULL,
+				rating_ru_s   int        unsigned NULL default NULL COMMENT \'ruchess standard\',
+				rating_fi_s   int        unsigned NULL default NULL COMMENT \'fide standard\',
+				rating_ru_r   int        unsigned NULL default NULL COMMENT \'ruchess rapid\',
+				rating_fi_r   int        unsigned NULL default NULL COMMENT \'fide rapid\',
+				rating_ru_b   int        unsigned NULL default NULL COMMENT \'ruchess blitz\',
+				rating_fi_b   int        unsigned NULL default NULL COMMENT \'fide blitz\',
+				PRIMARY KEY  (id_ruchess)
+			) DEFAULT CHARACTER SET '.$wpdb->charset.' COLLATE '.$wpdb->collate.';';
+
+
 		//rad_chess_logs
 		$sql_rad_chess_logs =
 			'CREATE TABLE '.$wpdb->prefix.'rad_chess_logs (
@@ -47,7 +61,7 @@ trait InstallUninstall{
 				data          mediumtext          NOT NULL
 			) DEFAULT CHARACTER SET '.$wpdb->charset.' COLLATE '.$wpdb->collate.';';
 
-		dbDelta([$sql_rad_chess_players, $sql_rad_chess_players_ratings, $sql_rad_chess_logs]);
+		dbDelta([$sql_rad_chess_players, $sql_rad_chess_players_ratings, $sql_rad_chess_current_ratings, $sql_rad_chess_logs]);
 		
 		
 		//создание cron задачи обновления
@@ -86,7 +100,7 @@ trait InstallUninstall{
 			delete_option('radiofan_chess_parser__etag_'.$type_id);
 			delete_option('radiofan_chess_parser__players_hash_'.$type_id);
 			delete_option('radiofan_chess_parser__ratings_hash_'.$type_id);
-			delete_option('radiofan_chess_parser__top_man_'.$type_id);
+			delete_option('radiofan_chess_parser__top_man_'.$type_id);//todo del
 			delete_option('radiofan_chess_parser__top_man_'.($type_id+1));
 			delete_option('radiofan_chess_parser__top_woman_'.$type_id);
 			delete_option('radiofan_chess_parser__top_woman_'.($type_id+1));
@@ -102,7 +116,7 @@ trait InstallUninstall{
 		
 		//удаляем таблицы
 		global $wpdb;
-		$wpdb->query('DROP TABLE '.$wpdb->prefix.'rad_chess_players_ratings, '.$wpdb->prefix.'rad_chess_players, '.$wpdb->prefix.'rad_chess_logs');
+		$wpdb->query('DROP TABLE '.$wpdb->prefix.'rad_chess_players_ratings, '.$wpdb->prefix.'rad_chess_players, '.$wpdb->prefix.'rad_chess_current_ratings, '.$wpdb->prefix.'rad_chess_logs');
 		
 		//удаляем опции
 		delete_option('radiofan_chess_parser__import_filter');
@@ -111,7 +125,7 @@ trait InstallUninstall{
 			delete_option('radiofan_chess_parser__etag_'.$type_id);
 			delete_option('radiofan_chess_parser__players_hash_'.$type_id);
 			delete_option('radiofan_chess_parser__ratings_hash_'.$type_id);
-			delete_option('radiofan_chess_parser__top_man_'.$type_id);
+			delete_option('radiofan_chess_parser__top_man_'.$type_id);//todo del
 			delete_option('radiofan_chess_parser__top_man_'.($type_id+1));
 			delete_option('radiofan_chess_parser__top_woman_'.$type_id);
 			delete_option('radiofan_chess_parser__top_woman_'.($type_id+1));
