@@ -1,11 +1,3 @@
-.float-left{
-	float:left;
-}
-
-.float-right{
-	float:right;
-}
-
 .table-nav-pages{
 	display:flex;
 	grid-gap:10px;
@@ -49,7 +41,6 @@
 	flex-direction:row;
 	padding-left:0;
 	border-radius:.25rem;
-	margin-bottom:20px;
 }
 
 .list-group-horizontal > .list-group-item + .list-group-item{
@@ -125,6 +116,11 @@ a.list-group-item{
 	font-weight:500;
 }
 
+.rating__table .table-nav{
+	display:flex;
+	justify-content:flex-end;
+}
+
 .table-box code{
 	white-space:nowrap;
 	font-family:"consolas", monospace;
@@ -149,7 +145,14 @@ a.list-group-item{
 	width:100%;
 }
 
-
+.table-header-options{
+	display:flex;
+	justify-content:space-between;
+	align-items:center;
+	margin-bottom:20px;
+	flex-wrap: wrap;
+	grid-gap: 20px;
+}
 
 /*-----------------------------------------------------------------------------*/
 

@@ -134,6 +134,8 @@ trait View{
 	public function view_players_page_table($atts, $content){
 		global $wpdb;
 		
+		//todo сделать нормальные опции?
+		
 		wp_enqueue_style('radiofan_chess_parser__style_rating_table');
 		wp_enqueue_script('radiofan_chess_parser__script_rating_table');
 		
@@ -143,6 +145,7 @@ trait View{
 		$player_sex = isset($_GET['sex']) ? $_GET['sex'] : 'all';
 		$sort = isset($_GET['sort']) ? $_GET['sort'] : $DEFAULT_SORT;
 		$sort_order = isset($_GET['order']) ? $_GET['order'] : $DEFAULT_SORT_ORDER;
+		$hide_empty_players = !empty($_GET['hide_empty']);
 		$search_value = isset($_GET['q']) ? $_GET['q'] : false;
 		$query = '';
 		//выборка типов пользователя
@@ -196,8 +199,14 @@ trait View{
 			$like_search_value = '%'.$wpdb->esc_like($search_value).'%';
 			$query .= $wpdb->prepare(' (`id_ruchess` LIKE %s OR `id_fide` LIKE %s OR `name` LIKE %s OR `birth_year` LIKE %s)', $like_search_value, $like_search_value, $like_search_value, $like_search_value);
 		}
+		//сокрытие игроков без рейтинга
+		if($hide_empty_players){
+			$query .= ($query ? ' AND' : ' WHERE');
+			$query .= ' NOT(`rating_ru_s` IS NULL AND `rating_fi_s` IS NULL AND `rating_ru_r` IS NULL AND `rating_fi_r` IS NULL AND `rating_ru_b` IS NULL AND `rating_fi_b` IS NULL)';
+		}
 		//пагинация по выборке
-		$players_c = absint($wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players`'.$query));
+		$left_join = $hide_empty_players ? ' LEFT JOIN `'.$wpdb->prefix.'rad_chess_current_ratings` AS `r` ON `p`.`id_ruchess` = `r`.`id_ruchess`' : '';
+		$players_c = absint($wpdb->get_var('SELECT COUNT(*) FROM `'.$wpdb->prefix.'rad_chess_players` AS `p`'.$left_join.$query));
 		$elem_per_page = isset($_GET['per_page']) ? absint($_GET['per_page']) : 50;
 		if($elem_per_page < 5){
 			$elem_per_page = 5;
@@ -233,6 +242,9 @@ trait View{
 			$href_builder['order'] = $sort_order;
 		if($search_value)
 			$href_builder['q'] = $search_value;
+		if($hide_empty_players){
+			$href_builder['hide_empty'] = '1';
+		}
 
 		$href_builder['page_n'] = 1;
 		$href_first_page = http_build_query($href_builder);
@@ -264,9 +276,18 @@ trait View{
 					break;
 			}
 		}
+		
+		$href_sex_options = [];
+		foreach(['all', 'm', 'f'] as $key){
+			$href_builder = ['sex' => $key];
+			if($hide_empty_players){
+				$href_builder['hide_empty'] = 1;
+			}
+			$href_sex_options[$key] = http_build_query($href_builder);
+		}
 
 		//генерация строк таблицы
-		$left_join = mb_substr($sort, 0, 6) === 'rating' ? ' LEFT JOIN `'.$wpdb->prefix.'rad_chess_current_ratings` AS `r` ON `p`.`id_ruchess` = `r`.`id_ruchess`' : '';
+		$left_join = mb_substr($sort, 0, 6) === 'rating' || $hide_empty_players ? ' LEFT JOIN `'.$wpdb->prefix.'rad_chess_current_ratings` AS `r` ON `p`.`id_ruchess` = `r`.`id_ruchess`' : '';
 		$players_res = $wpdb->get_results(
 			'SELECT `p`.`id_ruchess`, `id_fide`, `name`, `sex`, `birth_year`
 FROM `'.$wpdb->prefix.'rad_chess_players` AS `p`'.$left_join.'
@@ -314,23 +335,32 @@ FROM `'.$wpdb->prefix.'rad_chess_players` AS `p`'.$left_join.'
 		
 		//генерация html таблицы и пагинации
 		$ret = '<div class="players-table">
-					<div class="list-group list-group-horizontal float-left">
-						<a href="?sex=all" class="list-group-item list-group-item-action'.($player_sex == 'all' ? ' active' : '').'">Все</a>
-						<a href="?sex=m" class="list-group-item list-group-item-action'.($player_sex == 'male' ? ' active' : '').'">Мужчины</a>
-						<a href="?sex=f" class="list-group-item list-group-item-action'.($player_sex == 'female' ? ' active' : '').'">Женщины</a>
-					</div>
-					<form method="get" data-not-ajax="true">
-						<div class="float-right form-search">
-							<input type="hidden" name="sex" value="'.$player_sex.'">
-							<input type="text" name="q" autocomplete="off" value="'.$search_value_attr.'">
-							<button class="button-search" type="submit">
-								<img src="'.get_theme_root_uri().'/chess/assets/icons/search-solid.svg" alt="поиск">
-							</button>
+					<div class="table-header-options">
+						<div class="filter-options">
+							<div class="list-group list-group-horizontal">
+								<a href="?'.$href_sex_options['all'].'" class="list-group-item list-group-item-action'.($player_sex == 'all' ? ' active' : '').'">Все</a>
+								<a href="?'.$href_sex_options['m'].'" class="list-group-item list-group-item-action'.($player_sex == 'male' ? ' active' : '').'">Мужчины</a>
+								<a href="?'.$href_sex_options['f'].'" class="list-group-item list-group-item-action'.($player_sex == 'female' ? ' active' : '').'">Женщины</a>
+							</div>
+							<div class="hide-players-option">
+								'.($hide_empty_players ? '<a href="?sex='.$player_sex.'">Показывать игроков без рейтинга</a>' : '<a href="?sex='.$player_sex.'&hide_empty=1">Скрывать игроков без рейтинга</a>').'
+							</div>
 						</div>
-					</form>
-					<br class="clear">
+						<div>
+							<form method="get" data-not-ajax="true">
+								<div class="form-search">
+									<input type="hidden" name="sex" value="'.$player_sex.'">
+									<input type="hidden" name="hide_empty" value="'.$hide_empty_players.'">
+									<input type="text" name="q" autocomplete="off" value="'.$search_value_attr.'">
+									<button class="button-search" type="submit">
+										<img src="'.get_theme_root_uri().'/chess/assets/icons/search-solid.svg" alt="поиск">
+									</button>
+								</div>
+							</form>
+						</div>
+					</div>
 					<div class="table-nav">
-						<div class="table-nav-pages float-right">
+						<div class="table-nav-pages">
 							<span class="displaying-num">'.$elements_count.'</span>
 							<span class="pagination-links">
 								<a href="?'.$href_first_page.'">«</a>
@@ -348,7 +378,6 @@ FROM `'.$wpdb->prefix.'rad_chess_players` AS `p`'.$left_join.'
 								<a href="?'.$href_last_page.'">»</a>
 							</span>
 						</div>
-						<br class="clear">
 					</div>
 					<hr>
 					<div class="table-box">
@@ -406,7 +435,7 @@ FROM `'.$wpdb->prefix.'rad_chess_players` AS `p`'.$left_join.'
 					</div>
 					<hr>
 					<div class="table-nav">
-						<div class="table-nav-pages float-right">
+						<div class="table-nav-pages">
 							<span class="displaying-num">'.$elements_count.'</span>
 							<span class="pagination-links">
 								<a href="?'.$href_first_page.'">«</a>
