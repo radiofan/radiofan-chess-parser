@@ -179,6 +179,45 @@ trait AdminPage{
 			'radiofan_chess_parser__settings',
 			'radiofan_chess_parser_section'
 		);
+		add_settings_field(
+			'radiofan_chess_parser__default_sort',
+			'Столбец сортировки таблицы по умолчанию',
+			function(){
+				$sort_v = [
+					'name' => 'ФИО',
+					'id_ruchess' => 'ФШР ID',
+					'id_fide' => 'FIDE ID',
+					'birth_year' => 'Год рождения',
+					'rating_ru_s' => 'Классика ФШР',
+					'rating_fi_s' => 'Классика FIDE',
+					'rating_ru_r' => 'Рапид ФШР',
+					'rating_fi_r' => 'Рапид FIDE',
+					'rating_ru_b' => 'Блиц ФШР',
+					'rating_fi_b' => 'Блиц FIDE',
+				];
+				$val = get_option('radiofan_chess_parser__default_sort',self::DEFAULT_SORT_STR);
+				echo '<select name="radiofan_chess_parser__default_sort" id="radiofan_chess_parser__default_sort">';
+				foreach($sort_v as $key => $text){
+					echo '<option value="'.$key.'"'.($val === $key ? ' selected="selected"' : '').'>'.$text.'</option>';
+				}
+				echo '</select>';
+			},
+			'radiofan_chess_parser__settings',
+			'radiofan_chess_parser_section'
+		);
+		add_settings_field(
+			'radiofan_chess_parser__default_sort_order',
+			'Направление сортировки таблицы по умолчанию',
+			function(){
+				$val = get_option('radiofan_chess_parser__default_sort_order',self::DEFAULT_SORT_ORDER_STR);
+				echo '<select name="radiofan_chess_parser__default_sort_order" id="radiofan_chess_parser__default_sort_order">
+					<option value="asc"'.($val === 'asc' ? ' selected="selected"' : '').'>Возрастание</option>
+					<option value="desc"'.($val === 'desc' ? ' selected="selected"' : '').'>Убывание</option>
+				</select>';
+			},
+			'radiofan_chess_parser__settings',
+			'radiofan_chess_parser_section'
+		);
 
 		//Регистрируем опции по умолчанию 0, и функция валидации чисел
 		register_setting('radiofan_chess_parser_fields', 'radiofan_chess_parser__import_filter');
@@ -192,6 +231,48 @@ trait AdminPage{
 				},
 				'show_in_rest' => false,
 				'default' => false
+			]
+		);
+		register_setting(
+			'radiofan_chess_parser_fields',
+			'radiofan_chess_parser__default_sort',
+			[
+				'type' => 'string',
+				'sanitize_callback' => function($val){
+					$sort_v = [
+						'name' => 'ФИО',
+						'id_ruchess' => 'ФШР ID',
+						'id_fide' => 'FIDE ID',
+						'birth_year' => 'Год рождения',
+						'rating_ru_s' => 'Классика ФШР',
+						'rating_fi_s' => 'Классика FIDE',
+						'rating_ru_r' => 'Рапид ФШР',
+						'rating_fi_r' => 'Рапид FIDE',
+						'rating_ru_b' => 'Блиц ФШР',
+						'rating_fi_b' => 'Блиц FIDE',
+					];
+					if(isset($sort_v[$val]))
+						return $val;
+					
+					return self::DEFAULT_SORT_STR;
+				},
+				'show_in_rest' => false,
+				'default' => self::DEFAULT_SORT_STR
+			]
+		);
+		register_setting(
+			'radiofan_chess_parser_fields',
+			'radiofan_chess_parser__default_sort_order',
+			[
+				'type' => 'string',
+				'sanitize_callback' => function($val){
+					if($val === 'desc' || $val === 'asc')
+						return $val;
+
+					return self::DEFAULT_SORT_ORDER_STR;
+				},
+				'show_in_rest' => false,
+				'default' => self::DEFAULT_SORT_ORDER_STR
 			]
 		);
 	}

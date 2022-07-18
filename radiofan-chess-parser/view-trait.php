@@ -137,9 +137,12 @@ trait View{
 		wp_enqueue_style('radiofan_chess_parser__style_rating_table');
 		wp_enqueue_script('radiofan_chess_parser__script_rating_table');
 		
+		$DEFAULT_SORT = get_option('radiofan_chess_parser__default_sort', self::DEFAULT_SORT_STR);
+		$DEFAULT_SORT_ORDER = get_option('radiofan_chess_parser__default_sort_order', self::DEFAULT_SORT_ORDER_STR);
+		
 		$player_sex = isset($_GET['sex']) ? $_GET['sex'] : 'all';
-		$sort = isset($_GET['sort']) ? $_GET['sort'] : 'name';
-		$sort_order = isset($_GET['order']) ? $_GET['order'] : 'asc';
+		$sort = isset($_GET['sort']) ? $_GET['sort'] : $DEFAULT_SORT;
+		$sort_order = isset($_GET['order']) ? $_GET['order'] : $DEFAULT_SORT_ORDER;
 		$search_value = isset($_GET['q']) ? $_GET['q'] : false;
 		$query = '';
 		//выборка типов пользователя
@@ -181,8 +184,10 @@ trait View{
 			'rating_fi_b' => false,
 		];
 		
-		if(!isset($sort_ui[$sort]))
-			$sort = 'name';
+		if(!isset($sort_ui[$sort])){
+			$sort = $DEFAULT_SORT;
+			$sort_order = $DEFAULT_SORT_ORDER;
+		}
 		
 		$sort_order = ($sort_order != 'desc' && $sort_order != 'asc') ? 'asc' : $sort_order;
 		//поиск в выборке
@@ -222,9 +227,9 @@ trait View{
 		
 		if($player_sex != 'all')
 			$href_builder['sex'] = $player_sex;
-		if($sort != 'name')
+		if($sort != $DEFAULT_SORT)
 			$href_builder['sort'] = $sort;
-		if($sort_order != 'asc')
+		if($sort_order != $DEFAULT_SORT_ORDER)
 			$href_builder['order'] = $sort_order;
 		if($search_value)
 			$href_builder['q'] = $search_value;
@@ -335,7 +340,7 @@ FROM `'.$wpdb->prefix.'rad_chess_players` AS `p`'.$left_join.'
 										<input type="hidden" name="sex" value="'.$player_sex.'">
 										<input type="hidden" name="q" value="'.$search_value_attr.'">
 										<input type="hidden" name="sort" value="'.$sort.'">
-										<input type="hidden" name="sort_order" value="'.$sort_order.'">
+										<input type="hidden" name="order" value="'.$sort_order.'">
 										<span><input type="number" step="1" min="1" max="'.$max_page.'" name="page_n" value="'.$curr_page.'" class="curr-pages"> &nbsp;of&nbsp; <span class="total-pages">'.$max_page.'&nbsp;</span></span>
 									</form>
 								</span>
@@ -411,7 +416,7 @@ FROM `'.$wpdb->prefix.'rad_chess_players` AS `p`'.$left_join.'
 										<input type="hidden" name="sex" value="'.$player_sex.'">
 										<input type="hidden" name="q" value="'.$search_value_attr.'">
 										<input type="hidden" name="sort" value="'.$sort.'">
-										<input type="hidden" name="sort_order" value="'.$sort_order.'">
+										<input type="hidden" name="order" value="'.$sort_order.'">
 										<span><input type="number" step="1" min="1" max="'.$max_page.'" name="page_n" value="'.$curr_page.'" class="curr-pages"> &nbsp;of&nbsp; <span class="total-pages">'.$max_page.'&nbsp;</span></span>
 									</form>
 								</span>

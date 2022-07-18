@@ -22,6 +22,8 @@ class ChessParser{
 	const CHECK_ETAG = true;
 	const RUCHESS_HREF = 'https://ratings.ruchess.ru/people/';
 	const FIDE_HREF = 'https://ratings.fide.com/profile/';
+	const DEFAULT_SORT_STR = 'name';
+	const DEFAULT_SORT_ORDER_STR = 'asc';
 
 	/** @var string $plugin_path - путь к главному файлу */
 	protected $plugin_path;
