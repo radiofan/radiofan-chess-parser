@@ -127,9 +127,10 @@ a.list-group-item{
 }
 
 
-.td-text>p{
+.td-text > p{
 	margin:0 4px;
 }
+
 .td-text p{
 	margin-top:0;
 	margin-bottom:0;
@@ -150,8 +151,45 @@ a.list-group-item{
 	justify-content:space-between;
 	align-items:center;
 	margin-bottom:20px;
-	flex-wrap: wrap;
-	grid-gap: 20px;
+	flex-wrap:wrap;
+	grid-gap:20px;
+}
+
+.players-table-form-search{
+	display:flex;
+	flex-wrap:nowrap;
+}
+
+.players-table-form-search .query-input{
+	width:calc(100% - 35px);
+	height:35px;
+	padding-left:10px;
+	border:none;
+	outline:0;
+	background:#dbdde8;
+}
+
+.players-table-form-search .query-input.with-delete-button{
+	width:calc(100% - 70px);
+}
+
+.players-table-button-search{
+	cursor: pointer;
+	width: 35px;
+	height: 35px;
+	border: none;
+	background: #dbdde8;
+	text-decoration: none;
+	text-align: center;
+	font-weight: bold;
+	font-size: 25px;
+	padding-bottom: 7px;
+	line-height: 29px;
+	color: #19223f
+}
+
+.players-table-button-search img{
+	height:20px;
 }
 
 /*-----------------------------------------------------------------------------*/
@@ -210,6 +248,7 @@ a.list-group-item{
 .table-box tr:nth-child(odd){
 	background-color:#dbdde8;
 }
+
 /*
 .table-box tr:hover{
 	background-color:#868cad;

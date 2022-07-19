@@ -223,13 +223,14 @@ trait View{
 						</div>
 						<div>
 							<form method="get" data-not-ajax="true">
-								<div class="form-search">
+								<div class="players-table-form-search">
 									<input type="hidden" name="sex" value="'.$players_table_options->player_sex.'">
 									<input type="hidden" name="hide_empty" value="'.$players_table_options->hide_empty_players.'">
 									<input type="hidden" name="sort" value="'.$players_table_options->sort.'">
 									<input type="hidden" name="order" value="'.$players_table_options->sort_order.'">
-									<input type="text" name="q" autocomplete="off" value="'.$search_value_attr.'">
-									<button class="button-search" type="submit">
+									<input class="query-input'.($players_table_options->search_value !== '' ? ' with-delete-button' : '').'" type="text" name="q" autocomplete="off" value="'.$search_value_attr.'">
+									'.($players_table_options->search_value !== '' ? '<a class="players-table-button-search" href="?'.$players_table_options->get_clear_search_href().'">×</a>' : '').'
+									<button class="players-table-button-search" type="submit">
 										<img src="'.get_theme_root_uri().'/chess/assets/icons/search-solid.svg" alt="поиск">
 									</button>
 								</div>
@@ -380,6 +381,18 @@ trait View{
 
 
 //todo добавить документации
+
+/**
+ * @property-read string $player_sex - пол игроков которые нужны; 'm', 'f', 'all'
+ * @property-read string $sort - наименование столбца сортировки
+ * @property-read string $sort_order - направление сортировки; 'asc', 'desc'
+ * @property-read bool $hide_empty_players - убрать ли из выборки игроков без рейтинга
+ * @property-read string $search_value - строка поиска
+ * @property-read int $players_count - число игроков удовлетворяющих условию в $this->where_query
+ * @property-read int $elements_per_page - количество записей на странице таблицы
+ * @property-read int $max_page - номер последней страницы
+ * @property-read int $current_page - номер текущей страницы
+ */
 class PlayersTableOptions{
 	const DEFAULT_SORT_STR = 'name';
 	const DEFAULT_SORT_ORDER_STR = 'asc';
@@ -800,6 +813,24 @@ class PlayersTableOptions{
 		if(is_null($key))
 			return $this->sort_ui_hrefs;
 		return $this->sort_ui_hrefs[$key];
+	}
+
+	/**
+	 * @return string
+	 */
+	public function get_clear_search_href(){
+		$href_builder = [];
+
+		if($this->player_sex != 'all')
+			$href_builder['sex'] = $this->player_sex;
+		if($this->sort != $this->DEFAULT_SORT)
+			$href_builder['sort'] = $this->sort;
+		if($this->sort_order != $this->DEFAULT_SORT_ORDER)
+			$href_builder['order'] = $this->sort_order;
+		if($this->hide_empty_players)
+			$href_builder['hide_empty'] = 1;
+		
+		return http_build_query($href_builder);
 	}
 
 	/**
