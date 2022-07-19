@@ -147,6 +147,8 @@ trait View{
 		//генерация строк таблицы
 		$players = $players_table_options->get_players();
 		$ratings = $this->get_players_ratings(array_keys($players));
+		
+		$hide_rating_date = get_option('radiofan_chess_parser__hide_rating_date', false);
 
 		$players_list = '';
 		foreach($players as $id_ruchess => $data){
@@ -168,7 +170,8 @@ trait View{
 						if($i == 1){
 							$players_list .= '<div class="spoiler-wrap"><div class="spoiler-head folded">Ещё</div><div class="spoiler-body">';
 						}
-						$players_list .= '<p><code>'.mb_substr($ratings[$id][$r_id][$i]['update_date'], 0, 10).'</code>:&nbsp;&nbsp;&nbsp;&nbsp;'.$ratings[$id][$r_id][$i]['rating'].'</p>';
+						$date = $hide_rating_date ? '' : '<code>'.mb_substr($ratings[$id][$r_id][$i]['update_date'], 0, 10).'</code>:&nbsp;&nbsp;&nbsp;&nbsp;';
+						$players_list .= '<p>'.$date.$ratings[$id][$r_id][$i]['rating'].'</p>';
 					}
 					if($len > 1){
 						$players_list .= '</div></div>';

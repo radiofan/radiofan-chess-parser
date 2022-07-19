@@ -135,6 +135,7 @@ trait AdminPage{
 		);
 
 		//Добавляем поля опций
+		//фильтр игроков
 		add_settings_field(
 			'radiofan_chess_parser__import_filter',
 			'Фильтр игроков для их вставки (обновления) в БД',
@@ -164,6 +165,9 @@ trait AdminPage{
 			'radiofan_chess_parser__settings',
 			'radiofan_chess_parser_section'
 		);
+		register_setting('radiofan_chess_parser_fields', 'radiofan_chess_parser__import_filter');
+		
+		//обновление игроков
 		add_settings_field(
 			'radiofan_chess_parser__players_update',
 			'Обноволение игроков',
@@ -179,6 +183,20 @@ trait AdminPage{
 			'radiofan_chess_parser__settings',
 			'radiofan_chess_parser_section'
 		);
+		register_setting(
+			'radiofan_chess_parser_fields',
+			'radiofan_chess_parser__players_update',
+			[
+				'type' => 'bool',
+				'sanitize_callback' => function($val){
+					return !!$val;
+				},
+				'show_in_rest' => false,
+				'default' => false
+			]
+		);
+		
+		//Столбец сортировки таблицы по умолчанию
 		add_settings_field(
 			'radiofan_chess_parser__default_sort',
 			'Столбец сортировки таблицы по умолчанию',
@@ -205,34 +223,6 @@ trait AdminPage{
 			'radiofan_chess_parser__settings',
 			'radiofan_chess_parser_section'
 		);
-		add_settings_field(
-			'radiofan_chess_parser__default_sort_order',
-			'Направление сортировки таблицы по умолчанию',
-			function(){
-				$val = get_option('radiofan_chess_parser__default_sort_order',PlayersTableOptions::DEFAULT_SORT_ORDER_STR);
-				echo '<select name="radiofan_chess_parser__default_sort_order" id="radiofan_chess_parser__default_sort_order">
-					<option value="asc"'.($val === 'asc' ? ' selected="selected"' : '').'>Возрастание</option>
-					<option value="desc"'.($val === 'desc' ? ' selected="selected"' : '').'>Убывание</option>
-				</select>';
-			},
-			'radiofan_chess_parser__settings',
-			'radiofan_chess_parser_section'
-		);
-
-		//Регистрируем опции по умолчанию 0, и функция валидации чисел
-		register_setting('radiofan_chess_parser_fields', 'radiofan_chess_parser__import_filter');
-		register_setting(
-			'radiofan_chess_parser_fields',
-			'radiofan_chess_parser__players_update',
-			[
-				'type' => 'bool',
-				'sanitize_callback' => function($val){
-					return !!$val;
-				},
-				'show_in_rest' => false,
-				'default' => false
-			]
-		);
 		register_setting(
 			'radiofan_chess_parser_fields',
 			'radiofan_chess_parser__default_sort',
@@ -253,12 +243,27 @@ trait AdminPage{
 					];
 					if(isset($sort_v[$val]))
 						return $val;
-					
+
 					return PlayersTableOptions::DEFAULT_SORT_STR;
 				},
 				'show_in_rest' => false,
 				'default' => PlayersTableOptions::DEFAULT_SORT_STR
 			]
+		);
+		
+		//Направление сортировки таблицы по умолчанию
+		add_settings_field(
+			'radiofan_chess_parser__default_sort_order',
+			'Направление сортировки таблицы по умолчанию',
+			function(){
+				$val = get_option('radiofan_chess_parser__default_sort_order',PlayersTableOptions::DEFAULT_SORT_ORDER_STR);
+				echo '<select name="radiofan_chess_parser__default_sort_order" id="radiofan_chess_parser__default_sort_order">
+					<option value="asc"'.($val === 'asc' ? ' selected="selected"' : '').'>Возрастание</option>
+					<option value="desc"'.($val === 'desc' ? ' selected="selected"' : '').'>Убывание</option>
+				</select>';
+			},
+			'radiofan_chess_parser__settings',
+			'radiofan_chess_parser_section'
 		);
 		register_setting(
 			'radiofan_chess_parser_fields',
@@ -273,6 +278,35 @@ trait AdminPage{
 				},
 				'show_in_rest' => false,
 				'default' => PlayersTableOptions::DEFAULT_SORT_ORDER_STR
+			]
+		);
+		
+		//Скрытие даты рейтинга
+		add_settings_field(
+			'radiofan_chess_parser__hide_rating_date',
+			'Скрытие даты рейтинга',
+			function(){
+				echo '<input
+					type="checkbox"
+					name="radiofan_chess_parser__hide_rating_date"
+					id="radiofan_chess_parser__hide_rating_date"
+					value="1"';
+				checked(get_option('radiofan_chess_parser__hide_rating_date',false));
+				echo '>';
+			},
+			'radiofan_chess_parser__settings',
+			'radiofan_chess_parser_section'
+		);
+		register_setting(
+			'radiofan_chess_parser_fields',
+			'radiofan_chess_parser__hide_rating_date',
+			[
+				'type' => 'bool',
+				'sanitize_callback' => function($val){
+					return !!$val;
+				},
+				'show_in_rest' => false,
+				'default' => false
 			]
 		);
 	}

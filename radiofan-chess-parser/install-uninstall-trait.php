@@ -80,8 +80,9 @@ trait InstallUninstall{
 		//создадим опции плагина
 		add_option('radiofan_chess_parser__import_filter', '', '', 'no');
 		add_option('radiofan_chess_parser__players_update', '', '', 'no');
-		add_option('radiofan_chess_parser__default_sort', PlayersTableOptions::DEFAULT_SORT_STR);
-		add_option('radiofan_chess_parser__default_sort_order', PlayersTableOptions::DEFAULT_SORT_ORDER_STR);
+		add_option('radiofan_chess_parser__default_sort', PlayersTableOptions::DEFAULT_SORT_STR, '', 'no');
+		add_option('radiofan_chess_parser__default_sort_order', PlayersTableOptions::DEFAULT_SORT_ORDER_STR, '', 'no');
+		add_option('radiofan_chess_parser__hide_rating_date', false, '', 'no');
 	}
 
 	public function deactivate(){
@@ -121,6 +122,7 @@ trait InstallUninstall{
 		delete_option('radiofan_chess_parser__players_update');
 		delete_option('radiofan_chess_parser__default_sort');
 		delete_option('radiofan_chess_parser__default_sort_order');
+		delete_option('radiofan_chess_parser__hide_rating_date');
 		foreach(self::GAME_TYPE as $type_id => $type){
 			delete_option('radiofan_chess_parser__etag_'.$type_id);
 			delete_option('radiofan_chess_parser__players_hash_'.$type_id);
