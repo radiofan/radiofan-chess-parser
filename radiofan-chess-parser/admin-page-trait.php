@@ -309,6 +309,35 @@ trait AdminPage{
 				'default' => false
 			]
 		);
+
+		//Отображать только текущие рейтинги
+		add_settings_field(
+			'radiofan_chess_parser__only_current_rating',
+			'Отображать только текущие рейтинги (дата не отображается)',
+			function(){
+				echo '<input
+					type="checkbox"
+					name="radiofan_chess_parser__only_current_rating"
+					id="radiofan_chess_parser__only_current_rating"
+					value="1"';
+				checked(get_option('radiofan_chess_parser__only_current_rating',false));
+				echo '>';
+			},
+			'radiofan_chess_parser__settings',
+			'radiofan_chess_parser_section'
+		);
+		register_setting(
+			'radiofan_chess_parser_fields',
+			'radiofan_chess_parser__only_current_rating',
+			[
+				'type' => 'bool',
+				'sanitize_callback' => function($val){
+					return !!$val;
+				},
+				'show_in_rest' => false,
+				'default' => false
+			]
+		);
 	}
 
 	/**

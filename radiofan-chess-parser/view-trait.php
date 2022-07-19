@@ -145,41 +145,67 @@ trait View{
 		
 		
 		//генерация строк таблицы
-		$players = $players_table_options->get_players();
-		$ratings = $this->get_players_ratings(array_keys($players));
-		
-		$hide_rating_date = get_option('radiofan_chess_parser__hide_rating_date', false);
 
+		$hide_rating_date = get_option('radiofan_chess_parser__hide_rating_date', false);
 		$players_list = '';
-		foreach($players as $id_ruchess => $data){
-			$id = $data['id_ruchess'];
-			$players_list .= '
+		
+		if(get_option('radiofan_chess_parser__only_current_rating', false)){
+			//загружаем только текущие рейтинги
+			$players = $players_table_options->get_players(1);
+
+			foreach($players as $id_ruchess => $data){
+				$id = $data['id_ruchess'];
+				$players_list .= '
+<tr>
+	<td class="td-text td-id_ruchess"><a href="'.self::RUCHESS_HREF.$id.'">'.$id.'</a></td>
+	<td class="td-text td-id_fide">'.($data['id_fide'] ? '<a href="'.self::FIDE_HREF.$data['id_fide'].'">'.$data['id_fide'].'</a>' : '').'</td>
+	<td class="td-text td-name">'.esc_html($data['name']).'</td>
+	<td class="td-text td-sex">'.($data['sex'] ? 'ж' : 'м').'</td>
+	<td class="td-text td-birth_year">'.$data['birth_year'].'</td>
+	<td class="td-text td-standard-ruchess td-type-1"><p>'.$data['rating_ru_s'].'</p></td>
+	<td class="td-text td-standard-fide td-type-2"><p>'.$data['rating_fi_s'].'</p></td>
+	<td class="td-text td-rapid-ruchess td-type-3"><p>'.$data['rating_ru_r'].'</p></td>
+	<td class="td-text td-rapid-fide td-type-4"><p>'.$data['rating_fi_r'].'</p></td>
+	<td class="td-text td-blitz-ruchess td-type-5"><p>'.$data['rating_ru_b'].'</p></td>
+	<td class="td-text td-blitz-fide td-type-6"><p>'.$data['rating_fi_b'].'</p></td>
+</tr>';
+			}
+			
+		}else{
+			//загружаем все рейтинги
+			$players = $players_table_options->get_players();
+			$ratings = $this->get_players_ratings(array_keys($players));
+
+			foreach($players as $id_ruchess => $data){
+				$id = $data['id_ruchess'];
+				$players_list .= '
 <tr>
 	<td class="td-text td-id_ruchess"><a href="'.self::RUCHESS_HREF.$id.'">'.$id.'</a></td>
 	<td class="td-text td-id_fide">'.($data['id_fide'] ? '<a href="'.self::FIDE_HREF.$data['id_fide'].'">'.$data['id_fide'].'</a>' : '').'</td>
 	<td class="td-text td-name">'.esc_html($data['name']).'</td>
 	<td class="td-text td-sex">'.($data['sex'] ? 'ж' : 'м').'</td>
 	<td class="td-text td-birth_year">'.$data['birth_year'].'</td>';
-			
-			foreach(self::GAME_TYPE as $type_id => $type){
-				foreach([1 => 'ruchess', 2 => 'fide'] as $platform_id => $platform){
-					$r_id = $type_id*2+$platform_id;
-					$players_list .= '<td class="td-text td-'.$type.'-'.$platform.' td-type-'.$r_id.'">';
-					$len = isset($ratings[$id][$r_id]) ? sizeof($ratings[$id][$r_id]) : 0;
-					for($i=0; $i<$len; $i++){
-						if($i == 1){
-							$players_list .= '<div class="spoiler-wrap"><div class="spoiler-head folded">Ещё</div><div class="spoiler-body">';
+
+				foreach(self::GAME_TYPE as $type_id => $type){
+					foreach([1 => 'ruchess', 2 => 'fide'] as $platform_id => $platform){
+						$r_id = $type_id * 2+$platform_id;
+						$players_list .= '<td class="td-text td-'.$type.'-'.$platform.' td-type-'.$r_id.'">';
+						$len = isset($ratings[$id][$r_id]) ? sizeof($ratings[$id][$r_id]) : 0;
+						for($i = 0; $i < $len; $i++){
+							if($i == 1){
+								$players_list .= '<div class="spoiler-wrap"><div class="spoiler-head folded">Ещё</div><div class="spoiler-body">';
+							}
+							$date = $hide_rating_date ? '' : '<code>'.mb_substr($ratings[$id][$r_id][$i]['update_date'], 0, 10).'</code>:&nbsp;&nbsp;&nbsp;&nbsp;';
+							$players_list .= '<p>'.$date.$ratings[$id][$r_id][$i]['rating'].'</p>';
 						}
-						$date = $hide_rating_date ? '' : '<code>'.mb_substr($ratings[$id][$r_id][$i]['update_date'], 0, 10).'</code>:&nbsp;&nbsp;&nbsp;&nbsp;';
-						$players_list .= '<p>'.$date.$ratings[$id][$r_id][$i]['rating'].'</p>';
+						if($len > 1){
+							$players_list .= '</div></div>';
+						}
+						$players_list .= '</td>';
 					}
-					if($len > 1){
-						$players_list .= '</div></div>';
-					}
-					$players_list .= '</td>';
 				}
+				$players_list .= '</tr>';
 			}
-			$players_list .= '</tr>';
 		}
 		
 		//генерация html таблицы и пагинации
@@ -778,14 +804,16 @@ class PlayersTableOptions{
 
 	/**
 	 * Возвращает записи о игроках основываясь на опциях и пагинации
+	 * @param bool $with_current_ratings - загружать ли данные текущих рейтингов игроков
 	 * @return array
 	 */
-	public function get_players(){
+	public function get_players($with_current_ratings=false){
 		global $wpdb;
-		$left_join = $this->join_current_ratings ? $this->JOIN_CURRENT_RATINGS_STR : '';
+		$left_join = $this->join_current_ratings || $with_current_ratings ? $this->JOIN_CURRENT_RATINGS_STR : '';
 		
 		$players_res = $wpdb->get_results(
-			'SELECT `p`.`id_ruchess`, `id_fide`, `name`, `sex`, `birth_year`
+			'SELECT `p`.`id_ruchess`, `id_fide`, `name`, `sex`, `birth_year`'.
+			($with_current_ratings ? ', `rating_ru_s`, `rating_fi_s`, `rating_ru_r`, `rating_fi_r`, `rating_ru_b`, `rating_fi_b`' : '').'
 			FROM `'.$wpdb->prefix.'rad_chess_players` AS `p`
 			'.$left_join.'
 			'.$this->where_query.'
