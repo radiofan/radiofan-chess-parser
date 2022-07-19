@@ -195,7 +195,7 @@ trait AdminPage{
 					'rating_ru_b' => 'Блиц ФШР',
 					'rating_fi_b' => 'Блиц FIDE',
 				];
-				$val = get_option('radiofan_chess_parser__default_sort',self::DEFAULT_SORT_STR);
+				$val = get_option('radiofan_chess_parser__default_sort',PlayersTableOptions::DEFAULT_SORT_STR);
 				echo '<select name="radiofan_chess_parser__default_sort" id="radiofan_chess_parser__default_sort">';
 				foreach($sort_v as $key => $text){
 					echo '<option value="'.$key.'"'.($val === $key ? ' selected="selected"' : '').'>'.$text.'</option>';
@@ -209,7 +209,7 @@ trait AdminPage{
 			'radiofan_chess_parser__default_sort_order',
 			'Направление сортировки таблицы по умолчанию',
 			function(){
-				$val = get_option('radiofan_chess_parser__default_sort_order',self::DEFAULT_SORT_ORDER_STR);
+				$val = get_option('radiofan_chess_parser__default_sort_order',PlayersTableOptions::DEFAULT_SORT_ORDER_STR);
 				echo '<select name="radiofan_chess_parser__default_sort_order" id="radiofan_chess_parser__default_sort_order">
 					<option value="asc"'.($val === 'asc' ? ' selected="selected"' : '').'>Возрастание</option>
 					<option value="desc"'.($val === 'desc' ? ' selected="selected"' : '').'>Убывание</option>
@@ -254,10 +254,10 @@ trait AdminPage{
 					if(isset($sort_v[$val]))
 						return $val;
 					
-					return self::DEFAULT_SORT_STR;
+					return PlayersTableOptions::DEFAULT_SORT_STR;
 				},
 				'show_in_rest' => false,
-				'default' => self::DEFAULT_SORT_STR
+				'default' => PlayersTableOptions::DEFAULT_SORT_STR
 			]
 		);
 		register_setting(
@@ -269,10 +269,10 @@ trait AdminPage{
 					if($val === 'desc' || $val === 'asc')
 						return $val;
 
-					return self::DEFAULT_SORT_ORDER_STR;
+					return PlayersTableOptions::DEFAULT_SORT_ORDER_STR;
 				},
 				'show_in_rest' => false,
-				'default' => self::DEFAULT_SORT_ORDER_STR
+				'default' => PlayersTableOptions::DEFAULT_SORT_ORDER_STR
 			]
 		);
 	}

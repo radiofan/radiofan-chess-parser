@@ -80,8 +80,8 @@ trait InstallUninstall{
 		//создадим опции плагина
 		add_option('radiofan_chess_parser__import_filter', '', '', 'no');
 		add_option('radiofan_chess_parser__players_update', '', '', 'no');
-		add_option('radiofan_chess_parser__default_sort', self::DEFAULT_SORT_STR);
-		add_option('radiofan_chess_parser__default_sort_order', self::DEFAULT_SORT_ORDER_STR);
+		add_option('radiofan_chess_parser__default_sort', PlayersTableOptions::DEFAULT_SORT_STR);
+		add_option('radiofan_chess_parser__default_sort_order', PlayersTableOptions::DEFAULT_SORT_ORDER_STR);
 	}
 
 	public function deactivate(){
