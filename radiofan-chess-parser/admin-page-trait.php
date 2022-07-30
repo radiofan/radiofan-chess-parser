@@ -338,6 +338,35 @@ trait AdminPage{
 				'default' => false
 			]
 		);
+
+		//Удалять записи в логе старше 1 месяца
+		add_settings_field(
+			'radiofan_chess_parser__auto_clear_log',
+			'Удалять записи в логе старше 1 месяца',
+			function(){
+				echo '<input
+					type="checkbox"
+					name="radiofan_chess_parser__auto_clear_log"
+					id="radiofan_chess_parser__auto_clear_log"
+					value="1"';
+				checked(get_option('radiofan_chess_parser__auto_clear_log',true));
+				echo '>';
+			},
+			'radiofan_chess_parser__settings',
+			'radiofan_chess_parser_section'
+		);
+		register_setting(
+			'radiofan_chess_parser_fields',
+			'radiofan_chess_parser__auto_clear_log',
+			[
+				'type' => 'bool',
+				'sanitize_callback' => function($val){
+					return !!$val;
+				},
+				'show_in_rest' => false,
+				'default' => false
+			]
+		);
 	}
 
 	/**

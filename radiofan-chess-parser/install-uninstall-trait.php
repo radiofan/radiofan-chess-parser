@@ -84,6 +84,7 @@ trait InstallUninstall{
 		add_option('radiofan_chess_parser__default_sort_order', PlayersTableOptions::DEFAULT_SORT_ORDER_STR, '', 'no');
 		add_option('radiofan_chess_parser__hide_rating_date', false, '', 'no');
 		add_option('radiofan_chess_parser__only_current_rating', false, '', 'no');
+		add_option('radiofan_chess_parser__auto_clear_log', true, '', 'no');
 	}
 
 	public function deactivate(){
@@ -125,6 +126,7 @@ trait InstallUninstall{
 		delete_option('radiofan_chess_parser__default_sort_order');
 		delete_option('radiofan_chess_parser__hide_rating_date');
 		delete_option('radiofan_chess_parser__only_current_rating');
+		delete_option('radiofan_chess_parser__auto_clear_log');
 		foreach(self::GAME_TYPE as $type_id => $type){
 			delete_option('radiofan_chess_parser__etag_'.$type_id);
 			delete_option('radiofan_chess_parser__players_hash_'.$type_id);

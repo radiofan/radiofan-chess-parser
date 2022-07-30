@@ -12,7 +12,7 @@ function user_import_filter(
 	string $region_name
 ){
 	$accept = true;
-	eval(get_option('radiofan_chess_parser__import_filter', ''));//todo фильтр из админки
+	eval(get_option('radiofan_chess_parser__import_filter', ''));
 	return $accept;
 }
 
@@ -43,4 +43,12 @@ function num_decline($number, $titles, $param2 = '', $param3 = ''){
 	$number = absint($number);
 
 	return $number.' '. $titles[($number % 100 > 4 && $number % 100 < 20) ? 2 : $cases[min($number % 10, 5)]];
+}
+
+/**
+ * @param string $sql_time_interval - возраст, старше которого записи лога будут удалены; параметр не проверяется и используется на прмую в запросе вида `log_time` + INTERVAL '.$sql_time_interval.'
+ */
+function delete_old_logs($sql_time_interval = '1 MONTH'){
+	global $wpdb;
+	$wpdb->query('DELETE FROM '.$wpdb->prefix.'rad_chess_logs WHERE `log_time` + INTERVAL '.$sql_time_interval.' <= NOW()');
 }

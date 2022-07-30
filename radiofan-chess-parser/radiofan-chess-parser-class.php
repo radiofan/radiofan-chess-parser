@@ -66,6 +66,11 @@ class ChessParser{
 	 * @param int $type_id - тип из GAME_TYPE
 	 */
 	public function parse_data($type, $type_id){
+		//автоматическая очистка логов
+		if(get_option('radiofan_chess_parser__auto_clear_log',true)){
+			delete_old_logs();
+		}
+		
 		//скачивание файла
 		$etag = (self::CHECK_ETAG) ? get_option('radiofan_chess_parser__etag_'.$type_id, '') : null;
 		$wp_error = $this->download_file('https://ratings.ruchess.ru/api/smanager_'.$type.'.csv.zip', $this->plugin_dir.'files/download/'.$type.'.zip', $etag);
