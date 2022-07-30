@@ -69,9 +69,21 @@ trait AdminPage{
 			wp_nonce_ays('');
 			return;
 		}
+		
+		$prev_moth_dates = get_start_end_prev_month_days();
 		?>
 		<div class="wrap">
 			<h2><?= get_admin_page_title(); ?></h2>
+			<hr>
+			<h4>Скачать файл рейтингов с динамикой за указанный период</h4>
+			<form action="" method="POST">
+				<input type="hidden" name="action" value="radiofan_chess_parser__generate_excel_ratings">
+				<?php wp_nonce_field('radiofan_chess_parser__generate_excel_ratings'); ?>
+				<input type="date" name="date_start" value="<?= $prev_moth_dates['first_day']->format('Y-m-d'); ?>">
+				 - 
+				<input type="date" name="date_end" value="<?= $prev_moth_dates['end_day']->format('Y-m-d'); ?>">
+				<input type="submit" class="page-title-action" value="Скачать">
+			</form>
 			<hr>
 			<form action="" method="POST">
 				<?php $this->PlayersTable->display(); ?>
@@ -85,6 +97,7 @@ trait AdminPage{
 	 * создает таблицу для вывода
 	 */
 	public function init_players_page(){
+		$this->action_generate_excel_ratings();
 		require_once 'players-table-class.php';
 		$this->PlayersTable = new PlayersTable();
 	}
@@ -100,7 +113,8 @@ trait AdminPage{
 		
 		echo '<div class="wrap">
 			<h1 class="wp-heading-inline">'.get_admin_page_title().'</h1>
-			<a href="?page=radiofan_chess_parser__settings&action=radiofan_chess_parser__update_current_ratings&_wpnonce='.wp_create_nonce('radiofan_chess_parser__update_current_ratings').'" class="page-title-action">Обновить текущие рейтинги</a>';
+			<a href="?page=radiofan_chess_parser__settings&action=radiofan_chess_parser__update_current_ratings&_wpnonce='.wp_create_nonce('radiofan_chess_parser__update_current_ratings').'" class="page-title-action">Обновить текущие рейтинги</a>
+			<hr>';
 
 		settings_errors();
 		echo '<form method="POST" action="options.php">';
@@ -503,6 +517,39 @@ trait AdminPage{
 		rad_log::log('update_current_ratings_success: Текущие рейтинги обновлены', 'success', $time_statistic);
 
 		wp_redirect(self_admin_url('admin.php?page=radiofan_chess_parser__logs'));
+		exit;
+	}
+
+	/**
+	 * Событие создания и отправки пользователю файла с рейтингами игроков и динамикой за указанный период
+	 * требуется $_POST['action'] == 'radiofan_chess_parser__generate_excel_ratings' и wpnonce('radiofan_chess_parser__generate_excel_ratings')
+	 */
+	protected function action_generate_excel_ratings(){
+		if(
+			empty($_REQUEST['_wpnonce']) ||
+			empty($_POST['action']) ||
+			$_POST['action'] != 'radiofan_chess_parser__generate_excel_ratings' ||
+			empty($_POST['date_start']) ||
+			empty($_POST['date_end'])
+		){
+			return;
+		}
+
+		if(!current_user_can('edit_pages')){
+			wp_nonce_ays('');
+			return;
+		}
+
+		check_admin_referer('radiofan_chess_parser__generate_excel_ratings');
+
+		$date_start = \DateTime::createFromFormat('Y-m-d', $_POST['date_start']);
+		$date_end = \DateTime::createFromFormat('Y-m-d', $_POST['date_end']);
+		if(!$date_start || !$date_end)
+			return;
+		
+		if($date_start >= $date_end)
+			return;
+		
 		exit;
 	}
 }

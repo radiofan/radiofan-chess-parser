@@ -52,3 +52,89 @@ function delete_old_logs($sql_time_interval = '1 MONTH'){
 	global $wpdb;
 	$wpdb->query('DELETE FROM '.$wpdb->prefix.'rad_chess_logs WHERE `log_time` + INTERVAL '.$sql_time_interval.' <= NOW()');
 }
+
+/**
+ * Возвращает даты первого и последнего дня предшествующего месяца
+ * Если сегодня последний день текущего месяца, то данный месяц считается предшествующим
+ * @return array - ['first_day' => DateTime, 'end_day' => DateTime]
+ */
+function get_start_end_prev_month_days(){
+	$first_day = null;
+	$end_day = new \DateTime();
+	$end_day->setTime(0, 0);
+	if((int)$end_day->format('t') == (int)$end_day->format('j')){
+		$first_day = clone $end_day;
+		$first_day->setDate($end_day->format('Y'), $end_day->format('n'), 1);
+	}else{
+		$end_day->setDate($end_day->format('Y'), $end_day->format('n'), 1);
+
+		$first_day = clone $end_day;
+		
+		$first_day->sub(new \DateInterval('P1M'));
+		$end_day->sub(new \DateInterval('P1D'));
+	}
+	return ['first_day' => $first_day, 'end_day' => $end_day];
+}
+
+
+/**
+ * todo описание
+ * @param \DateTime|null $date_start
+ * @param \DateTime|null $date_end
+ * @throws \Exception 'date_start more or equal date_end'
+ * @return array
+ */
+function get_players_with_rating_dynamics($date_start = null, $date_end = null){
+	global $wpdb;
+	
+	if(!is_null($date_start)){
+		$date_start->setTime(0, 0);
+	}
+
+	if(!is_null($date_end)){
+		$date_end->setTime(0, 0)->add(new \DateInterval('P1D'));
+	}
+	
+	if($date_start >= $date_end)
+		throw new \Exception('date_start more or equal date_end');
+
+	$time_start = !is_null($date_start) ? $date_start->getTimestamp() : null;
+	$time_end = !is_null($date_end) ? $date_end->getTimestamp() : null;
+	
+	$ratings = [];
+
+	//todo можно произвести оптимизацию
+	$ret = $wpdb->get_results('SELECT `id_ruchess`, `rating_type`, `rating`, UNIX_TIMESTAMP(`update_date`) AS `update_time` FROM `'.$wpdb->prefix.'rad_chess_players_ratings` ORDER BY `id_ruchess` DESC, `update_date` DESC', ARRAY_A);
+	$len = sizeof($ret);
+	for($i=$len-1; $i>=0; $i--){
+		$id = (int)$ret[$i]['id_ruchess'];
+		$r_t = $ret[$i]['rating_type'];
+		$time_update = (int)$ret[$i]['update_time'];
+		
+		if(!isset($ratings[$id]))
+			$ratings[$id] = [];
+
+		if(!isset($ratings[$id][$r_t]))
+			$ratings[$id][$r_t] = ['rating_start' => null, 'rating_end' => null];
+		
+
+		//проверяем попадает ли рейтинг в правую границу если она имеется
+		if(is_null($time_end) || $time_update < $time_end){
+			//стартовый рейтинг может установиться:
+			//только первый при отсутствии левой границы, при условии что он находится до правой границы (если она есть)
+			//устанавливается до тех пор пока меньше левой границы
+			if(
+				(is_null($time_start) && is_null($ratings[$id][$r_t]['rating_start'])) ||
+				(!is_null($time_start) && $time_update < $time_start)
+			){
+				$ratings[$id][$r_t]['rating_start'] = ['rating' => (int)$ret[$i]['rating'], 'update_time' => $time_update];
+			}
+			
+			//конечный рейтинг устанавливается, при условии что он находится до правой границы (если она есть)
+			$ratings[$id][$r_t]['rating_end'] = ['rating' => (int)$ret[$i]['rating'], 'update_time' => $time_update];
+		
+		}
+	}
+	
+	return $ratings;
+}
