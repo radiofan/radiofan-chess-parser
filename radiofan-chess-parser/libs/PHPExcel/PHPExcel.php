@@ -6,6 +6,11 @@ if (!defined('PHPEXCEL_ROOT')) {
     require(PHPEXCEL_ROOT . 'PHPExcel/Autoloader.php');
 }
 
+/*
+ * Данная библиотека была перенесена на php версии 4.7 (скорее всего не полностью) с помощью репозитория https://github.com/hako-975/PHPExcel-v7.4
+ * Также я исправил пару ошибок совершенных при переносе
+ */
+
 /**
  * PHPExcel
  *
