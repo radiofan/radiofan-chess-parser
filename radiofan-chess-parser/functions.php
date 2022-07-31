@@ -67,3 +67,37 @@ function get_start_end_prev_month_days(){
 	}
 	return ['first_day' => $first_day, 'end_day' => $end_day];
 }
+
+/**
+ * возвращает форматированный объем памяти
+ * @param int|float $size
+ * @return string
+ */
+function round_memsize($size){
+	$unit = 'b';
+
+	if($size > 1024){
+		$size = (float) $size / 1024;
+		$unit = 'Kb';
+	}
+
+	if($size > 1024){
+		$size = (float) $size / 1024;
+		$unit = 'Mb';
+	}
+
+	if($size > 1024){
+		$size = (float) $size / 1024;
+		$unit = 'Gb';
+	}
+
+	if($size < 100){
+		$size = round($size, 2);
+	}else if($size < 1000){
+		$size = round($size, 1);
+	}else{
+		$size = round($size, 0);
+	}
+
+	return $size.' '.$unit;
+}

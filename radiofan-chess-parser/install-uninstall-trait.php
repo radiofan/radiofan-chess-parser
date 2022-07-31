@@ -66,6 +66,7 @@ trait InstallUninstall{
 		
 		//создание cron задачи обновления
 		wp_unschedule_hook('radiofan_chess_parser_parse');
+		wp_unschedule_hook('radiofan_chess_parser_create_month_ratings_file');
 		//первый запуск в 0:00 след. дня
 		$time = current_datetime();
 		$time = $time->setTime(0, 0);
@@ -76,6 +77,8 @@ trait InstallUninstall{
 			wp_schedule_event($time->getTimestamp(), 'daily', 'radiofan_chess_parser_parse', [$type, $type_id]);
 			$time = $time->add(new \DateInterval('PT10M'));
 		}
+		//$time = current_datetime()->add(new \DateInterval('PT2M'));
+		wp_schedule_event($time->getTimestamp(), 'daily', 'radiofan_chess_parser_create_month_ratings_file');
 		
 		//создадим опции плагина
 		add_option('radiofan_chess_parser__import_filter', '', '', 'no');
@@ -99,6 +102,7 @@ trait InstallUninstall{
 		
 		//отключаем cron
 		wp_unschedule_hook('radiofan_chess_parser_parse');
+		wp_unschedule_hook('radiofan_chess_parser_create_month_ratings_file');
 
 		//удаляем опции парсинга
 		foreach(self::GAME_TYPE as $type_id => $type){

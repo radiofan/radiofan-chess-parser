@@ -70,7 +70,7 @@ trait AdminPage{
 			return;
 		}
 		
-		$prev_moth_dates = get_start_end_prev_month_days();
+		$prev_month_dates = get_start_end_prev_month_days();
 		?>
 		<div class="wrap">
 			<h2><?= get_admin_page_title(); ?></h2>
@@ -79,9 +79,9 @@ trait AdminPage{
 			<form action="" method="POST">
 				<input type="hidden" name="action" value="radiofan_chess_parser__generate_excel_ratings">
 				<?php wp_nonce_field('radiofan_chess_parser__generate_excel_ratings'); ?>
-				<input type="date" name="date_start" value="<?= $prev_moth_dates['first_day']->format('Y-m-d'); ?>">
+				<input type="date" name="date_start" value="<?= $prev_month_dates['first_day']->format('Y-m-d'); ?>">
 				 - 
-				<input type="date" name="date_end" value="<?= $prev_moth_dates['end_day']->format('Y-m-d'); ?>">
+				<input type="date" name="date_end" value="<?= $prev_month_dates['end_day']->format('Y-m-d'); ?>">
 				<input type="submit" class="page-title-action" value="Скачать">
 			</form>
 			<hr>

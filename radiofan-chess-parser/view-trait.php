@@ -341,6 +341,48 @@ trait View{
 	}
 
 	/**
+	 * Выводит ссылки на файлы с рейтингами игроков за месяц (генерируются в СhessParser::create_month_ratings_file) с помощью шорткода [chess_month_ratings_files]
+	 * @see СhessParser::create_month_ratings_file()
+	 * @param $atts - ['last' => int]
+	 * @param $content
+	 */
+	public function view_month_ratings_files($atts, $content){
+		$atts = shortcode_atts(['last' => 0], $atts);
+		global $wp_locale;
+		
+		$ret = '';
+		
+		$files = scandir($this->plugin_dir.'files/ratings/');
+		$len = sizeof($files);
+		$matches = [];
+		for($i=$len-1; $i>=0; $i--){
+			if(!preg_match('#([0-9]{2})_([0-9]{4})\.xlsx$#iu', $files[$i], $matches))
+				continue;
+			
+			
+			$month = mb_strtolower($wp_locale->get_month($matches[1]));
+			$year = $matches[2];
+			$file_size = round_memsize(filesize($this->plugin_dir.'files/ratings/'.$files[$i]));
+			
+			$str = '<a href="'.$this->plugin_url.'files/ratings/'.$files[$i].'" download="Рейтинг-лист на '.$month.' '.$year.'.xlsx">Рейтинг-лист на '.$month.' '.$year.'</a> <i class="filesize">('.$file_size.')</i>';
+			
+			
+			if($atts['last']){
+				return $str;
+			}else{
+				$ret .= '<li>'.$str.'</li>';
+			}
+		}
+
+
+		if($atts['last']){
+			return '';
+		}
+		
+		return '<ul>'.$ret.'</ul>';
+	}
+
+	/**
 	 * Возвращает массив со всеми рейтингами переданных id игроков
 	 * @param int[] $players_id передавать только массив чисел, данные перед запросом не обрабатываются!!!
 	 * @return array

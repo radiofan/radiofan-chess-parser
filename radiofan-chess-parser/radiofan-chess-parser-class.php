@@ -85,7 +85,8 @@ class ChessParser{
 		register_activation_hook($this->plugin_path, [$this, 'activate']);
 		register_deactivation_hook($this->plugin_path, [$this, 'deactivate']);
 		
-		add_action('radiofan_chess_parser_parse', [$this, 'parse_data'], 10, 2);
+		add_action('radiofan_chess_parser_parse', [$this, 'parse_data'], 10, 2);//cron radiofan_chess_parser_parse
+		add_action('radiofan_chess_parser_create_month_ratings_file', [$this, 'create_month_ratings_file'], 10);//cron radiofan_chess_parser_create_month_ratings_file
 		
 		//add_action('current_screen', [$this, 'init_screen_admin_side']);
 		add_action('admin_menu', [$this, 'add_admin_menu_item']);
@@ -98,6 +99,7 @@ class ChessParser{
 
 		add_shortcode('chess_top_scoreboard', [$this, 'view_top_scoreboard']);
 		add_shortcode('chess_players_page', [$this, 'view_players_page_table']);
+		add_shortcode('chess_month_ratings_files', [$this, 'view_month_ratings_files']);
 		add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
 	}
 
@@ -125,6 +127,11 @@ class ChessParser{
 	}
 
 	/**
+	 * Скачивает файл с игроками и рейтингами с сайта ratings.ruchess.ru указанного типа игры, если etag отличается от предыдущего
+	 * Извлекает данные из файла
+	 * Если хэш сериализованного массива данных игроков отличается от хэша предыдущего парсинга, происходит импортирование игроков
+	 * Если хэш сериализованного массива рейтинго отличается от хэша предыдущего парсинга, происходит импортирование рейтингов
+	 * Результаты парсинга записываются в логи
 	 * @param string $type - тип из GAME_TYPE
 	 * @param int $type_id - тип из GAME_TYPE
 	 */
@@ -205,7 +212,27 @@ class ChessParser{
 		
 	}
 
+	/**
+	 * Пробует сгенерировать excel файл методом create_excel_ratings_with_dynamic за последний полный месяц, если он отсутсвует
+	 * Файлы хранятся в files/ratings/
+	 * Наименование Obschiy_rating-list_igrokov_Altayskogo_kraya_na_МЕСЯЦ2ЦИФРЫ_ГОД4ЦИФРЫ.xlsx
+	 */
+	public function create_month_ratings_file(){
+		$prev_month_dates = get_start_end_prev_month_days();
+		$file_name = 'Obschiy_rating-list_igrokov_Altayskogo_kraya_na_'.$prev_month_dates['end_day']->format('m_Y').'.xlsx';
+		if(file_exists($this->plugin_dir.'files/ratings/'.$file_name)){
+			return;
+		}
 
+		$excel = $this->create_excel_ratings_with_dynamic(clone $prev_month_dates['first_day'], clone $prev_month_dates['end_day']);
+		$excelWriter = new \PHPExcel_Writer_Excel2007($excel);
+		try{
+			$excelWriter->save($this->plugin_dir.'files/ratings/'.$file_name);
+		}catch(\Exception $ex){
+			rad_log::log('save_excel_error: Не удалось сохранить файл рейтингов за последний полный месяц ('.$prev_month_dates['end_day']->format('F Y').')', 'error', $ex);
+		}
+		rad_log::log('save_excel_success: Создан файл рейтингов за последний полный месяц ('.$prev_month_dates['end_day']->format('F Y').')', 'success', null);
+	}
 
 	/**
 	 * @param string $sql_time_interval - возраст, старше которого записи лога будут удалены; параметр не проверяется и используется на прмую в запросе вида `log_time` + INTERVAL '.$sql_time_interval.'
