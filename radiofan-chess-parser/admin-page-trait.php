@@ -550,7 +550,7 @@ trait AdminPage{
 		if($date_start >= $date_end)
 			return;
 		
-		$excel = create_excel_ratings_with_dynamic(clone $date_start, clone $date_end);
+		$excel = $this->create_excel_ratings_with_dynamic(clone $date_start, clone $date_end);
 		$filename = 'Общий рейтинг-лист игроков Алтайского края на период с '.$date_start->format('d-m-Y').' по '.$date_end->format('d-m-Y');
 		header('Content-type: application/vnd.ms-excel; charset=utf-8');
 		header('Content-disposition: xlsx'.date('Y-m-d').'.xlsx');
