@@ -214,20 +214,20 @@ class ChessParser{
 
 	/**
 	 * Пробует сгенерировать excel файл методом create_excel_ratings_with_dynamic за последний полный месяц, если он отсутсвует
-	 * Файлы хранятся в files/ratings/
+	 * Файлы хранятся в /ratings/
 	 * Наименование Obschiy_rating-list_igrokov_Altayskogo_kraya_na_МЕСЯЦ2ЦИФРЫ_ГОД4ЦИФРЫ.xlsx
 	 */
 	public function create_month_ratings_file(){
 		$prev_month_dates = get_start_end_prev_month_days();
 		$file_name = 'Obschiy_rating-list_igrokov_Altayskogo_kraya_na_'.$prev_month_dates['end_day']->format('m_Y').'.xlsx';
-		if(file_exists($this->plugin_dir.'files/ratings/'.$file_name)){
+		if(file_exists($this->plugin_dir.'ratings/'.$file_name)){
 			return;
 		}
 
 		$excel = $this->create_excel_ratings_with_dynamic(clone $prev_month_dates['first_day'], clone $prev_month_dates['end_day']);
 		$excelWriter = new \PHPExcel_Writer_Excel2007($excel);
 		try{
-			$excelWriter->save($this->plugin_dir.'files/ratings/'.$file_name);
+			$excelWriter->save($this->plugin_dir.'ratings/'.$file_name);
 		}catch(\Exception $ex){
 			rad_log::log('save_excel_error: Не удалось сохранить файл рейтингов за последний полный месяц ('.$prev_month_dates['end_day']->format('F Y').')', 'error', $ex);
 		}

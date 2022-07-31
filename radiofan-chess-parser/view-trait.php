@@ -352,7 +352,7 @@ trait View{
 		
 		$ret = '';
 		
-		$files = scandir($this->plugin_dir.'files/ratings/');
+		$files = scandir($this->plugin_dir.'ratings/');
 		$len = sizeof($files);
 		$matches = [];
 		for($i=$len-1; $i>=0; $i--){
@@ -362,9 +362,10 @@ trait View{
 			
 			$month = mb_strtolower($wp_locale->get_month($matches[1]));
 			$year = $matches[2];
-			$file_size = round_memsize(filesize($this->plugin_dir.'files/ratings/'.$files[$i]));
+			$file_size = round_memsize(filesize($this->plugin_dir.'ratings/'.$files[$i]));
 			
-			$str = '<a href="'.$this->plugin_url.'files/ratings/'.$files[$i].'" download="Рейтинг-лист на '.$month.' '.$year.'.xlsx">Рейтинг-лист на '.$month.' '.$year.'</a> <i class="filesize">('.$file_size.')</i>';
+			$str = '<a href="'.$this->plugin_url.'ratings/'.$files[$i].'" download="Cводная таблица рейтингов ФИДЕ и ФШР на '.$month.' '.$year.'.xlsx">
+			<svg class="svg-icon"><use xlink:href="'.$this->plugin_url.'assets/sprites.svg#file-excel"></use></svg> Cводная таблица рейтингов ФИДЕ и ФШР на '.$month.' '.$year.'</a> <i class="filesize">('.$file_size.')</i>';
 			
 			
 			if($atts['last']){
