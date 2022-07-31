@@ -8,6 +8,16 @@ require_once 'parser-trait.php';
 require_once 'admin-page-trait.php';
 require_once 'view-trait.php';
 
+/**
+ * Class ChessParser
+ * @package Radiofan\ChessParser
+ * @property-read string $plugin_path - путь к главному файлу
+ * @property-read string $plugin_dir - путь к папке плагина со слешем на конце
+ * @property-read string $plugin_dir_name - название папки плагина
+ * @property-read string $plugin_url - url к папке плагина со слешем на конце
+ * @property-read array $plugin_data - данные плагина, то что возвращает get_plugin_data
+ * @see get_plugin_data()
+ */
 class ChessParser{
 	
 	use InstallUninstall;
@@ -31,6 +41,11 @@ class ChessParser{
 	protected $plugin_dir_name;
 	/** @var string $plugin_url - url к папке плагина со слешем на конце */
 	protected $plugin_url;
+	/**
+	 * @var array $plugin_data - данные плагина, перед использованием вызвать ChessParser::init_plugin_data()
+	 * @see ChessParser::init_plugin_data()
+	 */
+	protected $plugin_data = [];
 	
 	const GAME_TYPE = [0 => 'standard', 1 => 'rapid', 2 => 'blitz'];
 
@@ -40,7 +55,26 @@ class ChessParser{
 		$this->plugin_dir = plugin_dir_path($this->plugin_path);
 		$this->plugin_dir_name = basename($this->plugin_dir);
 		$this->plugin_url = plugin_dir_url($this->plugin_path);
-
+		/*
+		$this->plugin_data = get_file_data(
+			$this->plugin_path,
+			[
+				'Name'        => 'Plugin Name',
+				'PluginURI'   => 'Plugin URI',
+				'Version'     => 'Version',
+				'Description' => 'Description',
+				'Author'      => 'Author',
+				'AuthorURI'   => 'Author URI',
+				'TextDomain'  => 'Text Domain',
+				'DomainPath'  => 'Domain Path',
+				'Network'     => 'Network',
+				'RequiresWP'  => 'Requires at least',
+				'RequiresPHP' => 'Requires PHP',
+				'UpdateURI'   => 'Update URI',
+			],
+			'plugin'
+		);
+		*/
 
 		register_activation_hook($this->plugin_path, [$this, 'activate']);
 		register_deactivation_hook($this->plugin_path, [$this, 'deactivate']);
@@ -59,6 +93,29 @@ class ChessParser{
 		add_shortcode('chess_top_scoreboard', [$this, 'view_top_scoreboard']);
 		add_shortcode('chess_players_page', [$this, 'view_players_page_table']);
 		add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
+	}
+
+	private function init_plugin_data(){
+		if(!$this->plugin_data){
+			$this->plugin_data = get_file_data(
+				$this->plugin_path,
+				[
+					'Name'        => 'Plugin Name',
+					'PluginURI'   => 'Plugin URI',
+					'Version'     => 'Version',
+					'Description' => 'Description',
+					'Author'      => 'Author',
+					'AuthorURI'   => 'Author URI',
+					'TextDomain'  => 'Text Domain',
+					'DomainPath'  => 'Domain Path',
+					'Network'     => 'Network',
+					'RequiresWP'  => 'Requires at least',
+					'RequiresPHP' => 'Requires PHP',
+					'UpdateURI'   => 'Update URI',
+				],
+				'plugin'
+			);
+		}
 	}
 
 	/**
@@ -140,5 +197,20 @@ class ChessParser{
 		}
 		unset($data['rating']);
 		
+	}
+	
+	public function __get($key){
+		switch($key){
+			case 'plugin_path':
+			case 'plugin_dir':
+			case 'plugin_dir_name':
+			case 'plugin_url':
+				return $this->$key;
+			case 'plugin_data':
+				$this->init_plugin_data();
+				return $this->plugin_data;
+			default:
+				throw new \Exception('Undefined property '.$key);
+		}
 	}
 }
