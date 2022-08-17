@@ -1,2 +1,0 @@
-#deny from all # apache < 2.4
-Require all denied

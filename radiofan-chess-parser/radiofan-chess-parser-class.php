@@ -85,7 +85,7 @@ class ChessParser{
 		register_activation_hook($this->plugin_path, [$this, 'activate']);
 		register_deactivation_hook($this->plugin_path, [$this, 'deactivate']);
 		
-		add_action('radiofan_chess_parser_parse', [$this, 'parse_data'], 10, 2);//cron radiofan_chess_parser_parse
+		add_action('radiofan_chess_parser_parse', [$this, 'parse_data'], 10, 3);//cron radiofan_chess_parser_parse
 		add_action('radiofan_chess_parser_create_month_ratings_file', [$this, 'create_month_ratings_file'], 10);//cron radiofan_chess_parser_create_month_ratings_file
 		
 		//add_action('current_screen', [$this, 'init_screen_admin_side']);
@@ -130,20 +130,25 @@ class ChessParser{
 	 * Скачивает файл с игроками и рейтингами с сайта ratings.ruchess.ru указанного типа игры, если etag отличается от предыдущего
 	 * Извлекает данные из файла
 	 * Если хэш сериализованного массива данных игроков отличается от хэша предыдущего парсинга, происходит импортирование игроков
-	 * Если хэш сериализованного массива рейтинго отличается от хэша предыдущего парсинга, происходит импортирование рейтингов
+	 * Если хэш сериализованного массива рейтингов отличается от хэша предыдущего парсинга, происходит импортирование рейтингов
 	 * Результаты парсинга записываются в логи
 	 * @param string $type - тип из GAME_TYPE
+	 * @param string $site - 'fide' или 'ruchess'
 	 * @param int $type_id - тип из GAME_TYPE
 	 */
-	public function parse_data($type, $type_id){
+	public function parse_data($type, $site, $type_id){
+		if($site !== 'fide' && $site !== 'ruchess')
+			throw new \Exception('Undefined site');
+		
 		//автоматическая очистка логов
 		if(get_option('radiofan_chess_parser__auto_clear_log',true)){
 			$this->delete_old_logs();
 		}
 		
 		//скачивание файла
-		$etag = (self::CHECK_ETAG) ? get_option('radiofan_chess_parser__etag_'.$type_id, '') : null;
-		$wp_error = $this->download_file('https://ratings.ruchess.ru/api/smanager_'.$type.'.csv.zip', $this->plugin_dir.'files/download/'.$type.'.zip', $etag);
+		$etag = (self::CHECK_ETAG) ? get_option('radiofan_chess_parser__etag_'.$site.'_'.$type_id, '') : null;
+		$file_url = $site === 'ruchess' ? 'https://ratings.ruchess.ru/api/smanager_'.$type.'.csv.zip' : 'http://ratings.fide.com/download/'.$type.'_rating_list.zip';
+		$wp_error = $this->download_file($file_url, $this->plugin_dir.'files/download/'.$site.'_'.$type.'.zip', $etag);
 		if(!$wp_error->get_error_messages('download_success')){
 			rad_log::log_wp_error($wp_error);
 			return;
@@ -152,61 +157,76 @@ class ChessParser{
 			$etag = $wp_error->get_error_data('new_etag');
 			$wp_error->remove('new_etag');
 			if(self::CHECK_ETAG){
-				update_option('radiofan_chess_parser__etag_'.$type_id, $etag, false);
+				update_option('radiofan_chess_parser__etag_'.$site.'_'.$type_id, $etag, false);
 			}
 		}
 		rad_log::log_wp_error($wp_error);
 		
 		//распаковка файла
-		$wp_error = $this->unzip_file($this->plugin_dir.'files/download/'.$type.'.zip', $this->plugin_dir.'files/unzip/'.$type.'/');
+		$wp_error = $this->unzip_file($this->plugin_dir.'files/download/'.$site.'_'.$type.'.zip', $this->plugin_dir.'files/unzip/'.$site.'_'.$type.'/');
 		rad_log::log_wp_error($wp_error);
 		if(!$wp_error->get_error_messages('unzip_file_success')){
 			return;
 		}
-		$csv_path = list_files($this->plugin_dir.'files/unzip/'.$type.'/', 1);
-		if(!$csv_path){
-			rad_log::log('Не найдены распакованные файлы', 'error', $this->plugin_dir.'files/download/'.$type.'.zip -> '.$this->plugin_dir.'files/unzip/'.$type.'/');
+		$data_file_path = list_files($this->plugin_dir.'files/unzip/'.$site.'_'.$type.'/', 1);
+		if(!$data_file_path){
+			rad_log::log('Не найдены распакованные файлы', 'error', $this->plugin_dir.'files/download/'.$site.'_'.$type.'.zip -> '.$this->plugin_dir.'files/unzip/'.$site.'_'.$type.'/');
 			return;
 		}
-		$csv_path = $csv_path[0];
-		wp_delete_file($this->plugin_dir.'files/download/'.$type.'.zip');
-		 
+		$data_file_path = $data_file_path[0];
+		wp_delete_file($this->plugin_dir.'files/download/'.$site.'_'.$type.'.zip');
 		
-		//парсинг файла
-		$wp_error = new \WP_Error();
-		$data = $this->parse_csv($csv_path, $wp_error);
-		rad_log::log_wp_error($wp_error);
-		if(!$wp_error->get_error_messages('csv_parsing_success')){
-			return;
-		}
 		
-		//импорт игроков
-		$wp_error = new \WP_Error();
-		$data_players_hash = sha1(serialize($data['player']));
-		$data_players_hash_old = get_option('radiofan_chess_parser__players_hash_'.$type_id, false);
-		if($data_players_hash_old !== $data_players_hash){
-			$this->db_import_players($data['player'], $wp_error, get_option('radiofan_chess_parser__players_update', false));
+		$data = null;
+		if($site == 'ruchess'){
+
+			//парсинг файла
+			$wp_error = new \WP_Error();
+			$data = $this->parse_csv($data_file_path, $wp_error);
 			rad_log::log_wp_error($wp_error);
-			if(!$wp_error->get_error_messages('db_import_players_error')){
-				update_option('radiofan_chess_parser__players_hash_'.$type_id, $data_players_hash, false);
+			if(!$wp_error->get_error_messages('csv_parsing_success')){
+				return;
 			}
+
+			//импорт игроков
+			$wp_error = new \WP_Error();
+			$data_players_hash = sha1(serialize($data['player']));
+			$data_players_hash_old = get_option('radiofan_chess_parser__players_hash_'.$site.'_'.$type_id, false);
+			if($data_players_hash_old !== $data_players_hash){
+				$this->db_import_players($data['player'], $wp_error, get_option('radiofan_chess_parser__players_update', false));
+				rad_log::log_wp_error($wp_error);
+				if(!$wp_error->get_error_messages('db_import_players_error')){
+					update_option('radiofan_chess_parser__players_hash_'.$site.'_'.$type_id, $data_players_hash, false);
+				}
+			}else{
+				rad_log::log('Игроки '.$site.' '.$type.' не требуют обновления', 'info', 'radiofan_chess_parser__players_hash_'.$site.'_'.$type_id.' = '.$data_players_hash);
+			}
+			unset($data['player']);
+			
 		}else{
-			rad_log::log('Игроки '.$type.' не требуют обновления', 'info', 'radiofan_chess_parser__players_hash_'.$type_id.' = '.$data_players_hash);
+			//$site == 'fide'
+			//парсинг файла
+			$wp_error = new \WP_Error();
+			$data = $this->parse_fide_txt($data_file_path, $wp_error);
+			rad_log::log_wp_error($wp_error);
+			if(!$wp_error->get_error_messages('fide_txt_parsing_success')){
+				return;
+			}
+			
 		}
-		unset($data['player']);
 		
 		//импорт рейтингов
 		$wp_error = new \WP_Error();
 		$data_ratings_hash = sha1(serialize($data['rating']));
-		$data_ratings_hash_old = get_option('radiofan_chess_parser__ratings_hash_'.$type_id, false);
+		$data_ratings_hash_old = get_option('radiofan_chess_parser__ratings_hash_'.$site.'_'.$type_id, false);
 		if($data_ratings_hash_old !== $data_ratings_hash){
-			$this->db_import_ratings($data['rating'], $wp_error, $type_id);
+			$this->db_import_ratings($data['rating'], $wp_error, $site, $type_id);
 			rad_log::log_wp_error($wp_error);
 			if(!$wp_error->get_error_messages('db_import_ratings_error')){
-				update_option('radiofan_chess_parser__ratings_hash_'.$type_id, $data_ratings_hash, false);
+				update_option('radiofan_chess_parser__ratings_hash_'.$site.'_'.$type_id, $data_ratings_hash, false);
 			}
 		}else{
-			rad_log::log('Рейтинги '.$type.' не требуют обновления', 'info', 'radiofan_chess_parser__ratings_hash_'.$type_id.' = '.$data_ratings_hash);
+			rad_log::log('Рейтинги '.$site.' '.$type.' не требуют обновления', 'info', 'radiofan_chess_parser__ratings_hash_'.$site.'_'.$type_id.' = '.$data_ratings_hash);
 		}
 		unset($data['rating']);
 		

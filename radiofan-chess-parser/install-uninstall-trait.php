@@ -74,7 +74,11 @@ trait InstallUninstall{
 		
 		//для каждого типа создадим свою cron задачу с интервалом в 10 мин
 		foreach(self::GAME_TYPE as $type_id => $type){
-			wp_schedule_event($time->getTimestamp(), 'daily', 'radiofan_chess_parser_parse', [$type, $type_id]);
+			wp_schedule_event($time->getTimestamp(), 'daily', 'radiofan_chess_parser_parse', [$type, 'ruchess', $type_id]);
+			$time = $time->add(new \DateInterval('PT10M'));
+		}
+		foreach(self::GAME_TYPE as $type_id => $type){
+			wp_schedule_event($time->getTimestamp(), 'daily', 'radiofan_chess_parser_parse', [$type, 'fide', $type_id]);
 			$time = $time->add(new \DateInterval('PT10M'));
 		}
 		//$time = current_datetime()->add(new \DateInterval('PT2M'));
@@ -106,9 +110,11 @@ trait InstallUninstall{
 
 		//удаляем опции парсинга
 		foreach(self::GAME_TYPE as $type_id => $type){
-			delete_option('radiofan_chess_parser__etag_'.$type_id);
-			delete_option('radiofan_chess_parser__players_hash_'.$type_id);
-			delete_option('radiofan_chess_parser__ratings_hash_'.$type_id);
+			delete_option('radiofan_chess_parser__etag_ruchess_'.$type_id);
+			delete_option('radiofan_chess_parser__etag_fide_'.$type_id);
+			delete_option('radiofan_chess_parser__players_hash_ruchess_'.$type_id);
+			delete_option('radiofan_chess_parser__ratings_hash_ruchess_'.$type_id);
+			delete_option('radiofan_chess_parser__ratings_hash_fide_'.$type_id);
 		}
 	}
 
@@ -132,9 +138,11 @@ trait InstallUninstall{
 		delete_option('radiofan_chess_parser__only_current_rating');
 		delete_option('radiofan_chess_parser__auto_clear_log');
 		foreach(self::GAME_TYPE as $type_id => $type){
-			delete_option('radiofan_chess_parser__etag_'.$type_id);
-			delete_option('radiofan_chess_parser__players_hash_'.$type_id);
-			delete_option('radiofan_chess_parser__ratings_hash_'.$type_id);
+			delete_option('radiofan_chess_parser__etag_ruchess_'.$type_id);
+			delete_option('radiofan_chess_parser__etag_fide_'.$type_id);
+			delete_option('radiofan_chess_parser__players_hash_ruchess_'.$type_id);
+			delete_option('radiofan_chess_parser__ratings_hash_ruchess_'.$type_id);
+			delete_option('radiofan_chess_parser__ratings_hash_fide_'.$type_id);
 		}
 	}
 }

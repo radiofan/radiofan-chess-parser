@@ -174,15 +174,9 @@ trait Parser{
 	 * 		'region_name'	=> string
 	 * 	],
 	 * 	'rating' => [
-	 * 		//может содержать 0 - 2 массива
+	 * 		// 0 или 1 массив
 	 * 		[
-	 * 			'id_ruchess'	=> int,
-	 * 			'rating_type'	=> 1,		//рейтинг ruchess
-	 * 			'rating'		=> int
-	 * 		],
-	 * 		[
-	 * 			'id_ruchess'	=> int,
-	 * 			'rating_type'	=> 2,		//рейтинг fide
+	 * 			'id_ruchess'	=> int,//рейтинг ruchess
 	 * 			'rating'		=> int
 	 * 		]
 	 * 	]
@@ -255,11 +249,13 @@ trait Parser{
 		$rating_fide    = $data[9];//Rtg_Int
 		
 		if($rating_ruchess !== ''){
-			$ret['rating'][] =['id_ruchess' => $ret['player']['id_ruchess'], 'rating_type' => 1, 'rating' => absint($rating_ruchess)];
+			$ret['rating'][] = ['id_ruchess' => $ret['player']['id_ruchess'], 'rating' => absint($rating_ruchess)];
 		}
+		/*
 		if($rating_fide !== ''){
 			$ret['rating'][] =['id_ruchess' => $ret['player']['id_ruchess'], 'rating_type' => 2, 'rating' => absint($rating_fide)];
 		}
+		*/
 
 		return $ret;
 	}
@@ -267,7 +263,7 @@ trait Parser{
 	/**
 	 * Проверяет данные на допуск с помощью функции user_import_filter(), используется пользовательский фильтр
 	 * @see user_import_filter()
-	 * @param array $data - резултат удачной работы Parser::parse_csv_str()
+	 * @param array $data - результат удачной работы Parser::parse_csv_str()
 	 * @return bool - true - данные допущены
 	 */
 	protected function user_import_filter($data){
@@ -281,6 +277,158 @@ trait Parser{
 			$data['player']['region_number'],
 			$data['player']['region_name']
 		);
+	}
+
+	/**
+	 * @param string $txt_path - абсолютный путь к текстовому файлу
+	 * @param WP_Error $parse_error - хранит ошибки парсинга (fide_txt_open_error, fide_txt_error_head_format, fide_txt_str_parse_error, fide_txt_parsing_success)
+	 * @return false|array
+	 * [
+	 * 	'player' => []
+	 * 	'rating' => массив результатов parse_csv_str  rating
+	 * ]
+	 * @see Parser::parse_txt_str
+	 * @see Parser::parse_csv_str
+	 */
+	protected function parse_fide_txt($txt_path, $parse_error){
+		$time_statistic = ['fide_txt_parsing_start' => microtime(1)];
+
+		$file_stream = fopen($txt_path, 'r');
+		if($file_stream === false){
+			$parse_error->add('fide_txt_open_error', 'Файл с данными не открыт!', $txt_path);
+			return false;
+		}
+
+		//проверка заголовка
+		$str = (string)fgets($file_stream);
+		$data = [];
+		$header = [];
+		preg_match('#^(ID Number +)(Name +)(Fed +)(Sex +)(Titl? +)(WTit +)(OTit +)(FOA +)([a-z0-9]+ +)(Gms +)(K +)(B-day +)(Flag *)#iu', $str, $data);
+		
+		if(sizeof($data) != 14){
+			fclose($file_stream);
+			$parse_error->add('fide_txt_error_head_format', 'Файл с данными имеет неправильный заголовок', [$txt_path, $str]);
+			return false;
+		}
+		
+		//обработаем заголовок, получим длины полей
+		$len = sizeof($data);
+		for($i=1; $i<$len; $i++){
+			if($i == 9){
+				$header['rating'] = mb_strlen($data[$i]);
+			}else{
+				$header[mb_strtolower(trim($data[$i]))] = mb_strlen($data[$i]);
+			}
+		}
+		
+		global $wpdb;
+		$data = $wpdb->get_results('SELECT `id_ruchess`, `id_fide` FROM `'.$wpdb->prefix.'rad_chess_players` WHERE NOT `id_fide` IS NULL', ARRAY_A);
+		$fide_to_ruchess_id = [];
+		$len = sizeof($data);
+		for($i=0; $i<$len; $i++){
+			$fide_to_ruchess_id[absint($data[$i]['id_fide'])] = absint($data[$i]['id_ruchess']);
+			unset($data[$i]);
+		}
+		
+
+		$rating_data_to_import = [];
+
+		$statistic = ['str_corrupted' => 0, 'str_all' => 0, 'str_filtered' => 0];
+
+		for($i=2;;$i++){
+			$str = fgets($file_stream);
+			if($str === false)
+				break;
+
+			$statistic['str_all']++;
+			$data = $this->parse_txt_str($str, $header, $parse_error, $i);
+			if($data === false){
+				$statistic['str_corrupted']++;
+				continue;
+			}
+			
+			//проверка fide_id
+			if(!sizeof($data['rating'])){
+				continue;
+			}
+			
+			$data = $data['rating'][0];
+			if(!isset($fide_to_ruchess_id[$data['id_fide']])){
+				continue;
+			}
+			$statistic['str_filtered']++;
+
+			$data['id_ruchess'] = $fide_to_ruchess_id[$data['id_fide']];
+			unset($data['id_fide']);
+
+			$rating_data_to_import[] = $data;
+		}
+		fclose($file_stream);
+		$time_statistic['fide_txt_parsing_end'] = microtime(1);
+		$time_statistic['fide_txt_parsing_time'] = $time_statistic['fide_txt_parsing_end'] - $time_statistic['fide_txt_parsing_start'];
+
+		$parse_error->add('fide_txt_parsing_success', 'Парсинг завершен', array_merge([$txt_path], $time_statistic, $statistic));
+
+		return ['player' => [], 'rating' => $rating_data_to_import];
+
+	}
+
+	/**
+	 * преобразует строку данных из файла fide в массив с данными игрока и его рейтингами
+	 * ошибки парсинга добавляются в $parse_error
+	 * @param string $str - строка данных
+	 * @param array $header - заголовок файла [{название заголовка} => {длина данных}, ...]
+	 * @param WP_Error $parse_error - хранит ошибки парсинга (fide_txt_str_parse_error)
+	 * @param int $str_number - номер обрабатываемой строки, нужен для указания ошибок
+	 * @return false|array
+	 * [
+	 * 	'player' => [{массив строк, ключи - ключи из header кроме ключа 'rating'}],
+	 * 	'rating' => [
+	 * 		// 0 или 1 массив
+	 * 		[
+	 * 			'id_fide'	=> int,//рейтинг fide
+	 * 			'rating'	=> int
+	 * 		]
+	 * 	]
+	 * ]
+	 */
+	protected function parse_txt_str($str, $header, $parse_error, $str_number){
+
+		if(!isset($header['id number'], $header['rating'])){
+			$parse_error->add('fide_txt_str_parse_error', 'Заголовки \'id number\' и \'rating\' не найдены');
+			return false;
+		}
+		
+		$data = [];
+		foreach($header as $head => $data_len){
+			$data[$head] = mb_substr($str, 0, $data_len);
+			if(mb_strlen($data[$head]) != $data_len){
+				$parse_error->add('fide_txt_str_parse_error', 'Строка '.$str_number.': Имеет не верную длину');
+				return false;
+			}
+			$data[$head] = trim($data[$head]);
+			$str = mb_substr($str, $data_len);
+		}
+		
+		
+		$rating_fide = $data['rating'];
+		$id_fide = absint($data['id number']);
+		if($id_fide === 0){
+			$parse_error->add('fide_txt_str_parse_error', 'Строка '.$str_number.': \'id number\' не задано');
+			return false;
+		}
+		
+		unset($data['rating']);
+		$ret = [
+			'player' => $data,
+			'rating' => []
+		];
+
+		if($rating_fide !== ''){
+			$ret['rating'][] = ['id_fide' => $id_fide, 'rating' => absint($rating_fide)];
+		}
+
+		return $ret;
 	}
 	
 	/**
@@ -337,9 +485,12 @@ trait Parser{
 	 * @param array $ratings - массив из rating'ов see Parser::parse_csv
 	 * @see Parser::parse_csv
 	 * @param WP_Error $import_error - хранит ошибки импорта (db_import_ratings_error, db_import_ratings_success)
+	 * @param string $site - 'fide' или 'ruchess'
 	 * @param int $rating_type - 0 - standard, 1 - rapid, 2 - blitz
 	 */
-	protected function db_import_ratings($ratings, $import_error, $rating_type=0){
+	protected function db_import_ratings($ratings, $import_error, $site, $rating_type=0){
+		if($site !== 'fide' && $site !== 'ruchess')
+			throw new \Exception('Undefined site');
 		global $wpdb;
 		$time_statistic = ['ratings_import_start' => microtime(1)];
 		$statistic = [];
@@ -357,7 +508,7 @@ trait Parser{
 		$ratings_len = sizeof($ratings);
 		for($i=0; $i<$ratings_len; $i++){
 			$id = absint($ratings[$i]['id_ruchess']);
-			$cur_rating_type = $rating_type*2 + $ratings[$i]['rating_type'];
+			$cur_rating_type = $rating_type*2 + ($site === 'fide' ? 2 : 1);
 			$rating = absint($ratings[$i]['rating']);
 			
 			$query = '
