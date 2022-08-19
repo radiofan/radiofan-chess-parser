@@ -21,7 +21,7 @@ trait Parser{
 			$ret = wp_remote_head($url, ['redirection' => 0, 'user-agent' => 'RADIOFAN Chess Parser', 'sslverify' => 0, 'headers' => ['If-None-Match' => $etag]]);
 
 			if((int) $ret['response']['code'] === 304){
-				return new WP_Error('download_not_need_update', 'Файл не требует обновления');
+				return new WP_Error('download_not_need_update', 'Файл не требует обновления', $ret);
 			}
 			if((int) $ret['response']['code'] !== 200){
 				return new WP_Error('download_undefined_error', 'Не удалось получить данные о файле', $ret);

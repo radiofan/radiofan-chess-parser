@@ -163,18 +163,20 @@ class ChessParser{
 		rad_log::log_wp_error($wp_error);
 		
 		//распаковка файла
-		$wp_error = $this->unzip_file($this->plugin_dir.'files/download/'.$site.'_'.$type.'.zip', $this->plugin_dir.'files/unzip/'.$site.'_'.$type.'/');
+		$zip_path = $this->plugin_dir.'files/download/'.$site.'_'.$type.'.zip';
+		$unzip_dir = $this->plugin_dir.'files/unzip/'.$site.'_'.$type.'/';
+		$wp_error = $this->unzip_file($zip_path, $unzip_dir);
 		rad_log::log_wp_error($wp_error);
 		if(!$wp_error->get_error_messages('unzip_file_success')){
 			return;
 		}
-		$data_file_path = list_files($this->plugin_dir.'files/unzip/'.$site.'_'.$type.'/', 1);
+		$data_file_path = list_files($unzip_dir, 1);
 		if(!$data_file_path){
-			rad_log::log('Не найдены распакованные файлы', 'error', $this->plugin_dir.'files/download/'.$site.'_'.$type.'.zip -> '.$this->plugin_dir.'files/unzip/'.$site.'_'.$type.'/');
+			rad_log::log('Не найдены распакованные файлы', 'error', $zip_path.' -> '.$unzip_dir);
 			return;
 		}
 		$data_file_path = $data_file_path[0];
-		wp_delete_file($this->plugin_dir.'files/download/'.$site.'_'.$type.'.zip');
+		wp_delete_file($zip_path);
 		
 		
 		$data = null;

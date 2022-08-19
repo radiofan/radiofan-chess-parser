@@ -116,6 +116,23 @@ trait InstallUninstall{
 			delete_option('radiofan_chess_parser__ratings_hash_ruchess_'.$type_id);
 			delete_option('radiofan_chess_parser__ratings_hash_fide_'.$type_id);
 		}
+		
+		//удаляем распакованные и скачанные файлы
+		if(!class_exists('WP_Filesystem_Base')){
+			require_once(ABSPATH.'wp-admin/includes/file.php');
+		}
+		/** @var \WP_Filesystem_Base $wp_filesystem */
+		global $wp_filesystem;
+		if(empty($wp_filesystem)){
+			WP_Filesystem();
+		}
+
+		$dir_to = str_replace(ABSPATH, $wp_filesystem->abspath(), $this->plugin_dir.'files/download/');
+		$wp_filesystem->delete($dir_to, true);
+		$wp_filesystem->mkdir($dir_to);
+		$dir_to = str_replace(ABSPATH, $wp_filesystem->abspath(), $this->plugin_dir.'files/unzip/');
+		$wp_filesystem->delete($dir_to, true);
+		$wp_filesystem->mkdir($dir_to);
 	}
 
 	public static function uninstall(){
