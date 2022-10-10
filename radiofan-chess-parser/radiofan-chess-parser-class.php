@@ -504,7 +504,7 @@ class ChessParser{
 		global $wpdb;
 
 		if(!is_null($date_start)){
-			$date_start->setTime(0, 0);
+			$date_start->setTime(0, 0)->add(new \DateInterval('P1D'));
 		}
 
 		if(!is_null($date_end)){
